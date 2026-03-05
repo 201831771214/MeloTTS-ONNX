@@ -1,0 +1,131 @@
+y_lengths: tensor([56])
+y_mask_x: tensor([[ True,  True,  True,  ..., False, False, False]])
+result: (tensor([[[-1.7362e-05,  6.0661e-06,  3.5213e-06,  ...,  3.6708e-03,
+           5.8244e-03,  6.7031e-03]]]), tensor([[[[1., 0., 0.,  ..., 0., 0., 0.],
+          [1., 0., 0.,  ..., 0., 0., 0.],
+          [0., 1., 0.,  ..., 0., 0., 0.],
+          ...,
+          [0., 0., 0.,  ..., 0., 0., 0.],
+          [0., 0., 0.,  ..., 0., 0., 0.],
+          [0., 0., 0.,  ..., 0., 0., 0.]]]]), tensor([[[1., 1., 1.,  ..., 0., 0., 0.]]]), tensor([56]), (tensor([[[ 0.0717,  0.5876, -0.2606,  ...,  0.0000,  0.0000,  0.0000],
+         [-1.3489, -1.9428, -0.9865,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.1477,  0.0098, -0.6217,  ...,  0.0000,  0.0000, -0.0000],
+         ...,
+         [-0.4759,  0.2790,  0.1491,  ..., -0.0000,  0.0000,  0.0000],
+         [-0.5804, -0.2671, -0.5708,  ...,  0.0000,  0.0000,  0.0000],
+         [ 0.1910, -0.4332,  0.4404,  ...,  0.0000,  0.0000,  0.0000]]]), tensor([[[ 0.0072,  0.4997, -0.3530,  ...,  0.9552,  0.5778,  0.0119],
+         [-0.4990, -1.0234,  0.1459,  ...,  0.6798, -0.0642, -0.4728],
+         [ 0.0838,  0.2523, -0.3374,  ...,  0.9916,  0.0042, -0.5468],
+         ...,
+         [-0.3591,  0.3970,  0.2853,  ..., -0.2598,  0.0493,  0.4965],
+         [-0.6828, -0.3342, -0.6179,  ...,  0.4435,  1.8317,  0.7895],
+         [-0.3216, -0.9683, -0.1041,  ..., -0.2767, -1.1208, -0.0617]]]), tensor([[[-0.0928, -0.0928, -0.1917,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.6062, -0.6062, -0.6743,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.1836, -0.1836, -0.1981,  ...,  0.0000,  0.0000,  0.0000],
+         ...,
+         [-0.0474, -0.0474, -0.0948,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.0079, -0.0079,  0.0024,  ...,  0.0000,  0.0000,  0.0000],
+         [ 0.0788,  0.0788,  0.2296,  ...,  0.0000,  0.0000,  0.0000]]]), tensor([[[-0.5372, -0.5372, -0.5396,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.2074, -0.2074, -0.2148,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.3441, -0.3441, -0.3532,  ...,  0.0000,  0.0000,  0.0000],
+         ...,
+         [-0.3388, -0.3388, -0.3412,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.1833, -0.1833, -0.1922,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.2181, -0.2181, -0.2220,  ...,  0.0000,  0.0000,  0.0000]]])))
+y_lengths: tensor([69])
+y_mask_x: tensor([[ True,  True,  True,  ..., False, False, False]])
+result: (tensor([[[-1.6598e-05,  6.8457e-06,  3.8985e-06,  ...,  3.6708e-03,
+           5.8244e-03,  6.7031e-03]]]), tensor([[[[1., 0., 0.,  ..., 0., 0., 0.],
+          [1., 0., 0.,  ..., 0., 0., 0.],
+          [1., 0., 0.,  ..., 0., 0., 0.],
+          ...,
+          [0., 0., 0.,  ..., 0., 0., 0.],
+          [0., 0., 0.,  ..., 0., 0., 0.],
+          [0., 0., 0.,  ..., 0., 0., 0.]]]]), tensor([[[1., 1., 1.,  ..., 0., 0., 0.]]]), tensor([69]), (tensor([[[ 0.0122,  1.0127,  0.3773,  ..., -0.0000, -0.0000, -0.0000],
+         [-2.7931, -2.3436, -0.1970,  ...,  0.0000,  0.0000,  0.0000],
+         [ 0.0825, -0.3737, -0.6816,  ...,  0.0000,  0.0000, -0.0000],
+         ...,
+         [-0.1703, -1.1200,  0.5238,  ..., -0.0000, -0.0000, -0.0000],
+         [ 0.6313,  0.4268, -0.2947,  ...,  0.0000,  0.0000,  0.0000],
+         [ 0.2286,  0.7024,  1.3379,  ...,  0.0000,  0.0000,  0.0000]]]), tensor([[[-0.0486,  0.9312,  0.2877,  ..., -0.0927, -0.7380, -0.2308],
+         [-1.9693, -1.4451,  0.8705,  ..., -0.2811,  0.2652,  0.3669],
+         [ 0.3128, -0.1334, -0.4091,  ...,  0.5449,  1.3643, -0.1177],
+         ...,
+         [-0.0472, -0.9884,  0.6698,  ..., -0.6112, -0.1226, -0.0750],
+         [ 0.5326,  0.3606, -0.3550,  ..., -0.3099, -0.8615,  0.1772],
+         [-0.2943,  0.1505,  0.7652,  ..., -0.6350, -0.6430, -0.8314]]]), tensor([[[-0.0928, -0.0928, -0.0928,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.6062, -0.6062, -0.6062,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.1836, -0.1836, -0.1836,  ...,  0.0000,  0.0000,  0.0000],
+         ...,
+         [-0.0474, -0.0474, -0.0474,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.0079, -0.0079, -0.0079,  ...,  0.0000,  0.0000,  0.0000],
+         [ 0.0788,  0.0788,  0.0788,  ...,  0.0000,  0.0000,  0.0000]]]), tensor([[[-0.5372, -0.5372, -0.5372,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.2074, -0.2074, -0.2074,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.3441, -0.3441, -0.3441,  ...,  0.0000,  0.0000,  0.0000],
+         ...,
+         [-0.3388, -0.3388, -0.3388,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.1833, -0.1833, -0.1833,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.2181, -0.2181, -0.2181,  ...,  0.0000,  0.0000,  0.0000]]])))
+y_lengths: tensor([66])
+y_mask_x: tensor([[ True,  True,  True,  ..., False, False, False]])
+result: (tensor([[[-1.5421e-05,  8.2457e-06,  5.0043e-06,  ...,  3.6708e-03,
+           5.8244e-03,  6.7031e-03]]]), tensor([[[[1., 0., 0.,  ..., 0., 0., 0.],
+          [1., 0., 0.,  ..., 0., 0., 0.],
+          [1., 0., 0.,  ..., 0., 0., 0.],
+          ...,
+          [0., 0., 0.,  ..., 0., 0., 0.],
+          [0., 0., 0.,  ..., 0., 0., 0.],
+          [0., 0., 0.,  ..., 0., 0., 0.]]]]), tensor([[[1., 1., 1.,  ..., 0., 0., 0.]]]), tensor([66]), (tensor([[[-0.2478, -0.1267, -0.2621,  ..., -0.0000,  0.0000,  0.0000],
+         [-1.2745, -1.5326, -2.1388,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.5759, -0.0419,  0.2833,  ..., -0.0000, -0.0000, -0.0000],
+         ...,
+         [ 0.3506,  0.2757, -0.6684,  ..., -0.0000,  0.0000,  0.0000],
+         [ 0.7538,  0.5775,  0.0572,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.1039,  0.5865, -0.3819,  ...,  0.0000,  0.0000,  0.0000]]]), tensor([[[-3.0853e-01, -2.0818e-01, -3.5244e-01,  ..., -2.2176e-01,
+           1.3393e+00,  5.1298e-01],
+         [-4.5346e-01, -6.4489e-01, -1.0859e+00,  ...,  1.5926e+00,
+          -1.1945e-01, -1.3858e+00],
+         [-3.4661e-01,  1.9683e-01,  5.5423e-01,  ..., -1.4467e-02,
+          -9.2103e-01, -2.8492e-01],
+         ...,
+         [ 4.7118e-01,  4.0228e-01, -5.2607e-01,  ..., -2.7370e-01,
+           1.1616e+00,  3.0014e-01],
+         [ 6.5110e-01,  5.1034e-01,  5.5960e-04,  ..., -4.8049e-01,
+           6.1195e-01,  3.3585e-01],
+         [-6.2103e-01,  4.2013e-02, -9.4241e-01,  ..., -9.4006e-02,
+           2.0384e-02,  5.2266e-01]]]), tensor([[[-0.0928, -0.0928, -0.0928,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.6062, -0.6062, -0.6062,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.1836, -0.1836, -0.1836,  ...,  0.0000,  0.0000,  0.0000],
+         ...,
+         [-0.0474, -0.0474, -0.0474,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.0079, -0.0079, -0.0079,  ...,  0.0000,  0.0000,  0.0000],
+         [ 0.0788,  0.0788,  0.0788,  ...,  0.0000,  0.0000,  0.0000]]]), tensor([[[-0.5372, -0.5372, -0.5372,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.2074, -0.2074, -0.2074,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.3441, -0.3441, -0.3441,  ...,  0.0000,  0.0000,  0.0000],
+         ...,
+         [-0.3388, -0.3388, -0.3388,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.1833, -0.1833, -0.1833,  ...,  0.0000,  0.0000,  0.0000],
+         [-0.2181, -0.2181, -0.2181,  ...,  0.0000,  0.0000,  0.0000]]])))
+/usr/local/anaconda3/envs/qaibase/lib/python3.10/site-packages/torch/jit/_trace.py:1310: TracerWarning: Trace had nondeterministic nodes. Did you forget call .eval() on your model? Nodes:
+        %8649 : Float(1, 192, 1024, strides=[196608, 1, 192], requires_grad=0, device=cpu) = aten::randn_like(%m_p, %8644, %8645, %8646, %8647, %8648) # /home/xt/VCProjects/MeloTTS-ONNX/melo/models.py:1087:0
+This may cause errors in trace checking. To disable trace checking, pass check_trace=False to torch.jit.trace()
+  _check_trace(
+/usr/local/anaconda3/envs/qaibase/lib/python3.10/site-packages/torch/jit/_trace.py:1310: TracerWarning: Output nr 1. of the traced function does not match the corresponding output of the Python function. Detailed error:
+Tensor-likes are not close!
+
+Mismatched elements: 35745 / 524288 (6.8%)
+Greatest absolute difference: 0.047541169449687004 at index (0, 0, 0, 20830) (up to 1e-05 allowed)
+Greatest relative difference: 13248.587764093285 at index (0, 0, 0, 7040) (up to 1e-05 allowed)
+  _check_trace(
+/home/xt/VCProjects/MeloTTS-ONNX/export_melo.py:124: DeprecationWarning: You are using the legacy TorchScript-based ONNX export. Starting in PyTorch 2.9, the new torch.export-based ONNX exporter will be the default. To switch now, set dynamo=True in torch.onnx.export. This new exporter supports features like exporting LLMs with DynamicCache. We encourage you to try it and share feedback to help improve the experience. Learn more about the new export logic: https://pytorch.org/docs/stable/onnx_dynamo.html. For exporting control flow: https://pytorch.org/tutorials/beginner/onnx/export_control_flow_model_to_onnx_tutorial.html.
+  torch.onnx.export(
+/usr/local/anaconda3/envs/qaibase/lib/python3.10/site-packages/torch/onnx/utils.py:807: UserWarning: no signature found for <torch.ScriptMethod object at 0x7b36b03e5da0>, skipping _decide_input_format
+  warnings.warn(f"{e}, skipping _decide_input_format")
+/usr/local/anaconda3/envs/qaibase/lib/python3.10/site-packages/torch/onnx/_internal/jit_utils.py:309: UserWarning: Constant folding - Only steps=1 can be constant folded for opset >= 10 onnx::Slice op. Constant folding not applied. (Triggered internally at /pytorch/torch/csrc/jit/passes/onnx/constant_fold.cpp:178.)
+  _C._jit_pass_onnx_node_shape_type_inference(node, params_dict, opset_version)
+/usr/local/anaconda3/envs/qaibase/lib/python3.10/site-packages/torch/onnx/symbolic_opset10.py:517: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.detach().clone() or sourceTensor.detach().clone().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  return g.op("Constant", value_t=torch.tensor(list_or_value))
+/usr/local/anaconda3/envs/qaibase/lib/python3.10/site-packages/torch/onnx/utils.py:684: UserWarning: Constant folding - Only steps=1 can be constant folded for opset >= 10 onnx::Slice op. Constant folding not applied. (Triggered internally at /pytorch/torch/csrc/jit/passes/onnx/constant_fold.cpp:178.)
+  _C._jit_pass_onnx_graph_shape_type_inference(
+/usr/local/anaconda3/envs/qaibase/lib/python3.10/site-packages/torch/onnx/utils.py:1154: UserWarning: Constant folding - Only steps=1 can be constant folded for opset >= 10 onnx::Slice op. Constant folding not applied. (Triggered internally at /pytorch/torch/csrc/jit/passes/onnx/constant_fold.cpp:178.)
+  _C._jit_pass_onnx_graph_shape_type_inference(
