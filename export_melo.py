@@ -52,12 +52,14 @@ def build_melo_dummy_input(
     sdp_ratio=0.2, 
     noise_scale=0.667, 
     noise_scale_w=0.8, 
-    speed=1.0):
+    speed=1.0,
+    target_seq_len=None):
     """Build dummy input for MeloTTS.
 
     Args:
         batch_size (int, optional): batch size. Defaults to 1.
-        seq_len (int, optional): sequence length. Defaults to 100.
+        target_seq_len (int, optional): target text sequence length. If set, 
+            pad/truncate all text-related inputs to this length.
         sdp_ratio (float, optional): sdp ratio. Defaults to 0.2.
         noise_scale (float, optional): noise scale. Defaults to 0.667.
         noise_scale_w (float, optional): noise scale w. Defaults to 0.8.
@@ -68,9 +70,35 @@ def build_melo_dummy_input(
     """
     bert, ja_bert, phones, tones, lang_ids = get_text_for_tts_infer(test_text, 'ZH_MIX_EN', melo_tts.hps, melo_tts.device, melo_tts.symbol_to_id)
     
+    current_len = phones.size(0)
+    original_len = current_len
+    
+    if target_seq_len is not None:
+        print(f"Target sequence length: {target_seq_len}, current text length: {current_len}")
+        if current_len < target_seq_len:
+            # Pad tensors to target_seq_len
+            pad_len = target_seq_len - current_len
+            phones = torch.cat([phones, torch.zeros(pad_len, dtype=phones.dtype)], dim=0)
+            tones = torch.cat([tones, torch.zeros(pad_len, dtype=tones.dtype)], dim=0)
+            lang_ids = torch.cat([lang_ids, torch.zeros(pad_len, dtype=lang_ids.dtype)], dim=0)
+            bert = torch.cat([bert, torch.zeros(bert.size(0), pad_len, dtype=bert.dtype)], dim=1)
+            ja_bert = torch.cat([ja_bert, torch.zeros(ja_bert.size(0), pad_len, dtype=ja_bert.dtype)], dim=1)
+            print(f"Padded from {current_len} to {target_seq_len}")
+        elif current_len > target_seq_len:
+            # Truncate
+            phones = phones[:target_seq_len]
+            tones = tones[:target_seq_len]
+            lang_ids = lang_ids[:target_seq_len]
+            bert = bert[:, :target_seq_len]
+            ja_bert = ja_bert[:, :target_seq_len]
+            original_len = target_seq_len
+            print(f"Truncated from {current_len} to {target_seq_len}")
+        else:
+            print(f"Sequence length already matches target: {current_len}")
     
     x_tst = phones.to(torch.int32).unsqueeze(0)
-    x_tst_lengths = torch.Tensor([phones.size(0)]).to(torch.int32)
+    # x_tst_lengths 保持原始文本长度，用于 masking（padding 部分自动被 mask 掉）
+    x_tst_lengths = torch.Tensor([original_len]).to(torch.int32)
     speakers = torch.Tensor([1]).to(torch.int32)
     tones = tones.to(torch.int32).unsqueeze(0)
     lang_ids = lang_ids.to(torch.int32).unsqueeze(0)
@@ -80,22 +108,25 @@ def build_melo_dummy_input(
     
     ratio = torch.Tensor([sdp_ratio]).to(torch.float32)
     scale = torch.Tensor([noise_scale]).to(torch.float32)
-    scale_w = torch.Tensor([noise_scale_w]).to(torch.float32)
     a_speed = torch.Tensor([speed]).to(torch.float32)
     
-    return (x_tst, x_tst_lengths, speakers, tones, lang_ids, bert, ja_bert, ratio, scale, scale_w, a_speed)
+    print(f"Input shapes: x_tst={x_tst.shape}, bert={bert.shape}, ja_bert={ja_bert.shape}")
+    
+    return (x_tst, x_tst_lengths, speakers, tones, lang_ids, bert, ja_bert, ratio, scale, a_speed)
 
 def export_melotts(
     melo_tts:TTS,
     output_path:str,
     dummy_input,
     opset_version:int=14,
-    is_dynamic:bool=True
+    is_dynamic:bool=True,
+    max_mel_frames:int=1024,
 ):
-    melotts_wrapper = MeloTTSWrapper(melo_tts, is_dynamic).eval()
+    melotts_wrapper = MeloTTSWrapper(melo_tts, is_dynamic, max_mel_frames=max_mel_frames).eval()
     
     
-    input_names = ["x_tst", "x_tst_lengths", "speakers", "tones", "lang_ids", "bert", "ja_bert", "sdp_ratio", "noise_scale", "noise_scale_w", "speed"]
+    # input_names = ["x_tst", "x_tst_lengths", "speakers", "tones", "lang_ids", "bert", "ja_bert", "sdp_ratio", "noise_scale", "noise_scale_w", "speed"]
+    input_names = ["x_tst", "x_tst_lengths", "speakers", "tones", "lang_ids", "bert", "ja_bert", "sdp_ratio", "noise_scale", "speed"]
     output_names = ["audio_data"]
     
     if is_dynamic:
@@ -109,7 +140,7 @@ def export_melotts(
             "ja_bert": {0: "batch_size", 2: "sequence_length"},
             "sdp_ratio": {0: "ratio"},
             "noise_scale": {0: "scale"},
-            "noise_scale_w": {0: "scale_w"},
+            # "noise_scale_w": {0: "scale_w"},
             "speed": {0: "speed"},
         }
         saved_name = f"melotts_{opset_version}_dynamic.onnx"
@@ -124,6 +155,12 @@ def export_melotts(
         
         
         if not is_dynamic:
+            # 同步 MultiHeadAttention._max_length 到 max_mel_frames
+            # 减小 buffer 尺寸 = 2*max_mel_frames-1，降低内存
+            for name, m in melo_tts.model.named_modules():
+                if isinstance(m, MultiHeadAttention) and m.window_size is not None:
+                    m._max_length = max_mel_frames
+            
             # 遍历完整模型的所有子模块
             count = 0
             for name, m in melo_tts.model.named_modules():
@@ -132,7 +169,7 @@ def export_melotts(
                     m.export_mode = True
                     count += 1
 
-            print(f"\n共设置 {count} 个 MultiHeadAttention 层")
+            print(f"\n共设置 {count} 个 MultiHeadAttention 层 (max_mel_frames={max_mel_frames})")
 
             # 验证没有遗漏
             missed = []
@@ -159,7 +196,8 @@ def export_melotts(
             dynamic_axes=dynamic_axes,
             # external_data=True,
             do_constant_folding=True,
-            export_modules_as_functions=False
+            export_modules_as_functions=False,
+            dynamo=False
         )
 
         # combine external data into main onnx file for easier loading in some runtimes (optional, can keep as external if preferred)
@@ -187,7 +225,7 @@ if __name__ == "__main__":
     msg_info = f"Export Melo TTS model to {default_output_path} by default."
     usg_info = """
     Usage:
-        python export_melotts.py [-m MODEL_PATH] [-o OUTPUT_PATH] [--opset OPSET] [-id] [-b BATCH_SIZE] [-s SEQUENCE_LENGTH]
+        python export_melo.py [-m MODEL_PATH] [-o OUTPUT_PATH] [--opset OPSET] [-id] [-sl SEQ_LEN] [-t TEST_TXT]
     """
 
     parser = argparse.ArgumentParser(usage=usg_info, description=msg_info)
@@ -200,7 +238,9 @@ if __name__ == "__main__":
     parser.add_argument("-sr", "--sdp_ratio", type=float, default=0.5, help="SDP ratio for dummy input.")     
     parser.add_argument("-ns", "--noise_scale", type=float, default=0.667, help="Noise scale for dummy input.")     
     parser.add_argument("-nsw", "--noise_scale_w", type=float, default=0.8, help="Noise scale w for dummy input.")     
-    parser.add_argument("-sp", "--speed", type=float, default=1.0, help="Speed for dummy input.")     
+    parser.add_argument("-sp", "--speed", type=float, default=1.0, help="Speed for dummy input.")
+    parser.add_argument("-sl", "--seq_len", type=int, default=None, help="Target text sequence length. Pad/truncate inputs to this length for static export.")
+    parser.add_argument("-mmf", "--max_mel_frames", type=int, default=1024, help="Max mel-spectrogram frames in static export (default: 1024, lower = less DSP memory).")
     args = parser.parse_args()
     
     os.makedirs(args.output_path, exist_ok=True)
@@ -223,6 +263,7 @@ if __name__ == "__main__":
         noise_scale=args.noise_scale,
         noise_scale_w=args.noise_scale_w,
         speed=args.speed,
+        target_seq_len=args.seq_len,
     )
 
     export_melotts(
@@ -231,5 +272,6 @@ if __name__ == "__main__":
         opset_version=args.opset,
         dummy_input=dummy_input,
         is_dynamic=args.is_dynamic,
+        max_mel_frames=args.max_mel_frames,
     )
     logger.info(f"Export Melo TTS model done in {time.perf_counter() - start_time:.2f} seconds.")

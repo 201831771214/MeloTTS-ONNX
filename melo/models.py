@@ -1039,6 +1039,7 @@ class SynthesizerTrn(nn.Module):
         speed,
         noise_scale_w,
         sdp_ratio,
+        max_mel_frames=1024,       # ← 可配置，降低 DSP 内存占用
         y=None,
         g=None,
     ):
@@ -1068,10 +1069,10 @@ class SynthesizerTrn(nn.Module):
         y_lengths = torch.clamp_min(torch.sum(w_ceil, [1, 2]), 1).long()  # [b]
 
         # ---------- 静态 y_mask ----------
-        # self.static_range: [1, 1, max_output_length]，register_buffer 常量
+        # 使用可配置的 max_mel_frames 替代硬编码 2048，降低 DSP 内存
         
         static_range = torch.arange(
-            2048,          # ← 必须是 Python int，不能是 tensor
+            max_mel_frames,          # ← 可配置，降低内存
             dtype=torch.long,
             device=x.device
         ).view(1, 1, -1)

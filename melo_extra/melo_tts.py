@@ -3,13 +3,17 @@ import torch
 import torch.nn as nn
 import numpy as np
 import soundfile as sf
+import os
+
+os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 class MeloTTSWrapper(nn.Module):
-    def __init__(self, melo_tts:TTS, is_dynamic:bool=False):
+    def __init__(self, melo_tts:TTS, is_dynamic:bool=False, max_mel_frames:int=1024):
         super().__init__()
         self.melo_tts = melo_tts
         self.is_dynamic = is_dynamic
         self.hop_size = 512
+        self.max_mel_frames = max_mel_frames
     
     @torch.no_grad()
     def forward(self,
@@ -22,7 +26,7 @@ class MeloTTSWrapper(nn.Module):
                 ja_bert:torch.Tensor,
                 sdp_ratio:torch.Tensor,
                 noise_scale:torch.Tensor,
-                noise_scale_w:torch.Tensor,
+                # noise_scale_w:torch.Tensor,
                 speed:torch.Tensor) -> torch.Tensor:
         """_summary_
 
@@ -66,6 +70,8 @@ class MeloTTSWrapper(nn.Module):
             audio_tensor = audio_tensor.squeeze(0) # remove channel dim
             return audio_tensor
         else:
+            noise_scale_w = torch.Tensor([0.8]).to(torch.float32)
+            
             result = self.melo_tts.model.forward_for_export_static(
                 x=x_tst,
                 x_lengths=x_tst_lengths,
@@ -78,6 +84,7 @@ class MeloTTSWrapper(nn.Module):
                 speed=speed,
                 noise_scale_w=noise_scale_w,
                 sdp_ratio=sdp_ratio,
+                max_mel_frames=self.max_mel_frames,
             )
 
             audio_tensor = result[0]   # [b, 1, T_audio_full]

@@ -1,6 +1,27 @@
-## MeloTTS-ONNX Project Details
-
-[EN](./README.en.md) | [ZH](./README.md)
+---
+license: Apache License 2.0
+language:
+  - zh
+  - en
+tasks:
+  - text-to-speech
+frameworks: other
+base_model:
+  - myshell-ai/MeloTTS-Chinese
+base_model_relation: repackage
+metrics:
+  - bertscore
+tags:
+  - 语音合成
+  - 多语言支持
+  - zh
+  - en
+  - onnx
+  - QNN EP
+  - Qualcomm
+  - QCS8550
+---
+## MeloTTS-ONNX 项目详解
 
 ![MIT License](./rep_sources/License-MIT-yellow.png)
 ![Numpy License](./rep_sources/NumPy-1.26.4-blue.png)
@@ -8,110 +29,114 @@
 ![Onnx License](./rep_sources/ONNX-1.20.1-green.png)
 ![Python License](./rep_sources/Python-3.10+-blue.png)
 
-### 1. Project Overview
+### 1. 项目概述
 
-**MeloTTS-ONNX** is the ONNX inference version of [MeloTTS](https://github.com/MoonshotAI/MeloTTS), specifically optimized for **CPU real-time inference**. The project supports:
+**MeloTTS-ONNX** 是 [MeloTTS](https://github.com/MoonshotAI/MeloTTS) 的 ONNX 推理版本，专门针对 **CPU 实时推理**进行了优化。项目支持：
 
-- ✅ Chinese-English mixed TTS
-- ✅ Multiple languages: Chinese, English, Japanese, Korean, Spanish, French, etc.
-- ✅ ONNX Runtime inference, fast inference speed
+- ✅ 中英文混合 TTS
+- ✅ 多种语言：中文、英文、日文、韩文、西班牙语、法语等
+- ✅ ONNX Runtime 推理，推理速度快
 
 ---
 
-#### Repository Links
+#### 仓库地址
 
-- Git Repo: https://gitee.com/jackroing/melo-tts-onnx.git
-- ModelScope Model Repo: https://www.modelscope.cn/models/KeanuX/MeloTTS-ZH-MIXED-EN-ONNX
+- Gitee仓库: https://gitee.com/jackroing/melo-tts-onnx.git
+- GitHub仓库: https://github.com/201831771214/MeloTTS-ONNX.git
+- ModelScope模型仓库: https://www.modelscope.cn/models/KeanuX/MeloTTS-ZH-MIXED-EN-ONNX
 
 ```shell
-# Clone the repository
+# gitee克隆仓库
 git clone https://gitee.com/jackroing/melo-tts-onnx.git
 
-# Get the model
+# github克隆仓库
+git clone https://github.com/201831771214/MeloTTS-ONNX.git
+
+# 获取模型
 modelscope download --model KeanuX/MeloTTS-ZH-MIXED-EN-ONNX --local_dir ./
 ```
 
-### 2. Project Architecture
+### 2. 项目架构
 
 ```
 melo-tts-onnx/
-├── melo/                      # Original PyTorch training code
-│   ├── api.py                 # TTS API interface
-│   ├── models.py              # Model definition (SynthesizerTrn)
-│   ├── modules.py             # Model modules
-│   ├── text/                  # Text processing (tokenization, phoneme conversion)
-│   │   ├── chinese.py         # Chinese text processing
-│   │   ├── english.py         # English text processing
+├── melo/                      # 原始 PyTorch 训练代码
+│   ├── api.py                 # TTS API 接口
+│   ├── models.py              # 模型定义 (SynthesizerTrn)
+│   ├── modules.py             # 模型模块
+│   ├── text/                  # 文本处理（分词、phoneme转换）
+│   │   ├── chinese.py         # 中文文本处理
+│   │   ├── english.py         # 英文文本处理
 │   │   └── ...
-│   ├── train.py / train.sh    # Training scripts
+│   ├── train.py / train.sh    # 训练脚本
 │   └── ...
 │
-├── melo_extra/                # Text processing modules required for inference
-│   ├── melo_tts.py            # ONNX export wrapper
+├── melo_extra/                # 推理时依赖的文本处理模块
+│   ├── melo_tts.py            # ONNX 导出封装
 │   └── inference/
-│       ├── text/              # Inference text processing (corresponds to melo/text)
-│       ├── commons.py         # Common utilities
-│       └── utils.py           # Parameter configuration
+│       ├── text/              # 推理用文本处理（与melo/text对应）
+│       ├── commons.py         # 通用工具
+│       └── utils.py           # 参数配置
 │
-├── models/melotts/            # ONNX model directory
-│   ├── melotts_14.onnx        # Exported ONNX model
-│   ├── config.json            # Model configuration
-│   └── bert-base-multilingual-uncased/  # BERT model
+├── models/melotts/            # ONNX 模型目录
+│   ├── melotts_14.onnx        # 导出的 ONNX 模型
+│   ├── config.json            # 模型配置
+│   └── bert-base-multilingual-uncased/  # BERT 模型
 │
-├── run_onnx.py                # ⭐ Core inference script
-├── export_melo.py             # ONNX export script
-├── export_model_info.py       # Model information export tool
+├── run_onnx.py                # ⭐ 核心推理脚本
+├── export_melo.py             # ONNX 导出脚本
+├── export_model_info.py       # 模型信息导出工具
 └── README.md
 ```
 
 ---
 
-### 3. Core Script Usage
+### 3. 核心脚本使用
 
-#### 3.1 Inference Script: `run_onnx.py`
+#### 3.1 推理脚本：`run_onnx.py`
 
-This is the **most commonly used script** for converting text to speech:
+这是**最常用的脚本**，用于将文本转换为语音：
 
 ```python
 from run_onnx import MeloTTS
 
-# Initialize the model
+# 初始化模型
 model_path = "./models/melotts/"
 melo_tts = MeloTTS(model_path, device="cpu")
 
-# Generate audio
+# 生成音频
 audio, sr = melo_tts.generate_audio(
     text="你好，我是中英混合模型。Hello I am a mixed language model.",
-    language="ZH_MIX_EN",      # Language: ZH_MIX_EN, EN, JP, KR etc.
-    sdp_ratio=0.2,            # SDP ratio
-    noise_scale=0.667,        # Noise scale
-    noise_scale_w=0.8,        # Noise weight
-    speed=1.0                 # Speech speed
+    language="ZH_MIX_EN",      # 语言: ZH_MIX_EN, EN, JP, KR 等
+    sdp_ratio=0.2,            # SDP 比率
+    noise_scale=0.667,        # 噪声尺度
+    noise_scale_w=0.8,        # 噪声权重
+    speed=1.0                 # 语速
 )
 ```
 
-**Main Parameter Description:**
+**主要参数说明：**
 
-| Parameter | Description | Default Value |
+| 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `text` | Input text | Required |
-| `language` | Language code | `"ZH_MIX_EN"` |
-| `sdp_ratio` | SDP ratio (0-1) | 0.2 |
-| `noise_scale` | Noise scale | 0.667 |
-| `noise_scale_w` | Noise weight | 0.8 |
-| `speed` | Speech speed | 1.0 |
+| `text` | 输入文本 | 必填 |
+| `language` | 语言代码 | `"ZH_MIX_EN"` |
+| `sdp_ratio` | SDP 比率 (0-1) | 0.2 |
+| `noise_scale` | 噪声尺度 | 0.667 |
+| `noise_scale_w` | 噪声权重 | 0.8 |
+| `speed` | 语速 | 1.0 |
 
-**Supported Language Codes:**
+**支持的语言代码：**
 
-- `ZH_MIX_EN` - Chinese (supports Chinese-English mixing)
-- `EN` - English
-- etc.
+- `ZH_MIX_EN` - 中文（支持中英文混合）
+- `EN` - 英文
+- 等
 
 ---
 
-#### 3.2 ONNX Export Script: `export_melo.py`
+#### 3.2 ONNX 导出脚本：`export_melo.py`
 
-Used to export PyTorch models to ONNX format:
+用于将 PyTorch 模型导出为 ONNX 格式：
 
 ```bash
 python export_melo.py \
@@ -122,511 +147,521 @@ python export_melo.py \
     ...
 ```
 
-**Main Parameters:**
+**主要参数：**
 
-- `--ckpt_path` - Model checkpoint path
-- `--cfg_path` - Configuration file path
-- `--output_path` - Output ONNX file path
-- `--opset` - ONNX opset version (default 14)
+- `--ckpt_path` - 模型检查点路径
+- `--cfg_path` - 配置文件路径
+- `--output_path` - 输出 ONNX 文件路径
+- `--opset` - ONNX opset 版本（默认14）
 
 ---
 
-#### 3.3 Model Information Export: `export_model_info.py`
+#### 3.3 模型信息导出：`export_model_info.py`
 
-Used to export detailed information about the ONNX model (input/output shapes, parameter count, etc.):
+用于导出 ONNX 模型的详细信息（输入输出形状、参数数量等）：
 
 ```bash
 python export_model_info.py -m ./models/melotts/melotts_14.onnx -o ./infos/melotts_14.info
 ```
 
-Output Example:
+输出示例：
 
 ```text
 ============================================================
-ONNX Model Basic Information
+ONNX模型基本信息
 ============================================================
-Model File Path: ./models/melotts_onnx/melotts_14_dynamic.onnx
-ONNX Version: 7
-Producer Info: pytorch 2.8.0
-Model Version: 0
-Description: 
+模型文件路径: ./models/melotts_onnx/melotts_14_dynamic.onnx
+ONNX版本: 7
+生产者信息: pytorch 2.8.0
+模型版本: 0
+描述: 
 
 ============================================================
-Model Input Information (Total 11 Inputs)
+模型输入信息 (共 11 个输入)
 ============================================================
 Input 1: x_tst
-  Data Type: int32
-  Shape: [0, 0]
+  数据类型: int32
+  形状: [0, 0]
 
 Input 2: x_tst_lengths
-  Data Type: int32
-  Shape: [0]
+  数据类型: int32
+  形状: [0]
 
 Input 3: speakers
-  Data Type: int32
-  Shape: [0]
+  数据类型: int32
+  形状: [0]
 
 Input 4: tones
-  Data Type: int32
-  Shape: [0, 0]
+  数据类型: int32
+  形状: [0, 0]
 
 Input 5: lang_ids
-  Data Type: int32
-  Shape: [0, 0]
+  数据类型: int32
+  形状: [0, 0]
 
 Input 6: bert
-  Data Type: float32
-  Shape: [0, 1024, 0]
+  数据类型: float32
+  形状: [0, 1024, 0]
 
 Input 7: ja_bert
-  Data Type: float32
-  Shape: [0, 768, 0]
+  数据类型: float32
+  形状: [0, 768, 0]
 
 Input 8: sdp_ratio
-  Data Type: float32
-  Shape: [0]
+  数据类型: float32
+  形状: [0]
 
 Input 9: noise_scale
-  Data Type: float32
-  Shape: [0]
+  数据类型: float32
+  形状: [0]
 
 Input 10: noise_scale_w
-  Data Type: float32
-  Shape: [0]
+  数据类型: float32
+  形状: [0]
 
 Input 11: speed
-  Data Type: float32
-  Shape: [0]
+  数据类型: float32
+  形状: [0]
 
 ============================================================
-Model Output Information (Total 1 Output)
+模型输出信息 (共 1 个输出)
 ============================================================
 Output 1: audio_data
-  Data Type: float32
-  Shape: [1, 0]
+  数据类型: float32
+  形状: [1, 0]
 
 
 ============================================================
-ONNX Model Basic Information
+ONNX模型基本信息
 ============================================================
-Model File Path: ./models/melotts_onnx/melotts_14_static.onnx
-ONNX Version: 7
-Producer Info: pytorch 2.8.0
-Model Version: 0
-Description: 
+模型文件路径: ./models/melotts_onnx/melotts_14_static.onnx
+ONNX版本: 7
+生产者信息: pytorch 2.8.0
+模型版本: 0
+描述: 
 
 ============================================================
-Model Input Information (Total 10 Inputs)
+模型输入信息 (共 10 个输入)
 ============================================================
 Input 1: x_tst
-  Data Type: int32
-  Shape: [1, 239]
+  数据类型: int32
+  形状: [1, 239]
 
 Input 2: x_tst_lengths
-  Data Type: int32
-  Shape: [1]
+  数据类型: int32
+  形状: [1]
 
 Input 3: speakers
-  Data Type: int32
-  Shape: [1]
+  数据类型: int32
+  形状: [1]
 
 Input 4: tones
-  Data Type: int32
-  Shape: [1, 239]
+  数据类型: int32
+  形状: [1, 239]
 
 Input 5: lang_ids
-  Data Type: int32
-  Shape: [1, 239]
+  数据类型: int32
+  形状: [1, 239]
 
 Input 6: bert
-  Data Type: float32
-  Shape: [1, 1024, 239]
+  数据类型: float32
+  形状: [1, 1024, 239]
 
 Input 7: ja_bert
-  Data Type: float32
-  Shape: [1, 768, 239]
+  数据类型: float32
+  形状: [1, 768, 239]
 
 Input 8: sdp_ratio
-  Data Type: float32
-  Shape: [1]
+  数据类型: float32
+  形状: [1]
 
 Input 9: noise_scale_w
-  Data Type: float32
-  Shape: [1]
+  数据类型: float32
+  形状: [1]
 
 Input 10: speed
-  Data Type: float32
-  Shape: [1]
+  数据类型: float32
+  形状: [1]
 
 ============================================================
-Model Output Information (Total 1 Output)
+模型输出信息 (共 1 个输出)
 ============================================================
 Output 1: audio_data
-  Data Type: float32
-  Shape: [1, 0]
+  数据类型: float32
+  形状: [1, 0]
 
 ============================================================
-ONNX Model Basic Information
+ONNX模型基本信息
 ============================================================
-Model File Path: ./melo_tts_qnn/model.onnx
-ONNX Version: 11
-Producer Info: Qualcomm AI Hub Workbench aihub-2026.02.26.0
-Model Version: 0
-Description: 
+模型文件路径: ./melo_tts_qnn/model.onnx
+ONNX版本: 11
+生产者信息: Qualcomm AI Hub Workbench aihub-2026.02.26.0
+模型版本: 0
+描述: 
 
 ============================================================
-Model Input Information (Total 10 Inputs)
+模型输入信息 (共 10 个输入)
 ============================================================
 Input 1: x_tst
-  Data Type: int32
-  Shape: [1, 239]
+  数据类型: int32
+  形状: [1, 239]
 
 Input 2: x_tst_lengths
-  Data Type: int32
-  Shape: [1]
+  数据类型: int32
+  形状: [1]
 
 Input 3: speakers
-  Data Type: int32
-  Shape: [1]
+  数据类型: int32
+  形状: [1]
 
 Input 4: tones
-  Data Type: int32
-  Shape: [1, 239]
+  数据类型: int32
+  形状: [1, 239]
 
 Input 5: lang_ids
-  Data Type: int32
-  Shape: [1, 239]
+  数据类型: int32
+  形状: [1, 239]
 
 Input 6: bert
-  Data Type: float32
-  Shape: [1, 1024, 239]
+  数据类型: float32
+  形状: [1, 1024, 239]
 
 Input 7: ja_bert
-  Data Type: float32
-  Shape: [1, 768, 239]
+  数据类型: float32
+  形状: [1, 768, 239]
 
 Input 8: sdp_ratio
-  Data Type: float32
-  Shape: [1]
+  数据类型: float32
+  形状: [1]
 
 Input 9: noise_scale_w
-  Data Type: float32
-  Shape: [1]
+  数据类型: float32
+  形状: [1]
 
 Input 10: speed
-  Data Type: float32
-  Shape: [1]
+  数据类型: float32
+  形状: [1]
 
 ============================================================
-Model Output Information (Total 1 Output)
+模型输出信息 (共 1 个输出)
 ============================================================
 Output 1: audio_data
-  Data Type: float32
-  Shape: [1, 429568]
+  数据类型: float32
+  形状: [1, 429568]
 
 ============================================================
-Model Weight Information (Total 0 Parameters)
+模型权重信息 (共 0 个参数)
 ============================================================
-Total Model Parameters: 0
+模型总参数量: 0
 
 ============================================================
-Model Operator Information (Total 1 Operator)
+模型运算符信息 (共 1 个运算符)
 ============================================================
-Operator Type        | Count
+运算符类型           | 使用次数
 ------------------------------
 EPContext       | 1
 
-Detailed Layer Information:
+详细层信息:
 ------------------------------------------------------------
-Layer 1: QNNContext (EPContext)
-  Inputs: x_tst, x_tst_lengths, speakers, tones, lang_ids, bert, ja_bert, sdp_ratio, noise_scale_w, speed
-  Outputs: audio_data
-  Attributes:
+层 1: QNNContext (EPContext)
+  输入: x_tst, x_tst_lengths, speakers, tones, lang_ids, bert, ja_bert, sdp_ratio, noise_scale_w, speed
+  输出: audio_data
+  属性:
     - embed_mode: 
     - ep_cache_context: ./model.bin
     - source: QNN
 
 
 ============================================================
-Additional Information
+额外信息
 ============================================================
-Import Version: -13
-Model Graph Name: qnn-onnx-model
+导入版本: -13
+模型计算图名称: qnn-onnx-model
 ```
+
+#### Update信息
+更新MeloTTS ONNX Static Model:
+- 增加melotts_14_static.onnx模型的序列长度到512,减少中间层参数量为原来的一半
+
+#### Precompiled QNN ONNX Profile Info
+
+![info0](./rep_sources/info0.png)
+![info1](./rep_sources/info1.png)
+![info1](./rep_sources/info2.png)
 
 ---
 
-### 4. How It Works
+### 4. 工作原理
 
 ```
-Text Input
+文本输入
    ↓
 ┌─────────────────────────────────────────┐
-│  Text Preprocessing (clean_text)        │
-│  - Tokenization                         │
-│  - Convert to phoneme                    │
-│  - Get tone                              │
-│  - BERT Feature Extraction               │
+│  文本预处理 (clean_text)                 │
+│  - 分词                                 │
+│  - 转换为 phoneme                       │
+│  - 获取 tone                            │
+│  - BERT 特征提取                        │
 └─────────────────────────────────────────┘
    ↓
 ┌─────────────────────────────────────────┐
-│  ONNX Model Inference                    │
-│  - Glow-TTS (Text→Mel Spectrogram)      │
-│  - HiFi-GAN (Mel Spectrogram→Audio)     │
+│  ONNX 模型推理                          │
+│  - Glow-TTS (文本→mel频谱)             │
+│  - HiFi-GAN (mel频谱→音频)             │
 └─────────────────────────────────────────┘
    ↓
-Audio Output (44.1kHz)
+音频输出 (44.1kHz)
 ```
 
-**ONNX Dynamic Model Inputs (11):**
+**ONNX Dynamic模型输入 (11个)：**
 
-1. `x_tst` - Text token IDs
-2. `x_tst_lengths` - Text length
-3. `speakers` - Speaker ID
-4. `tones` - Tone IDs
-5. `lang_ids` - Language IDs
-6. `bert` - BERT features (1024-dim)
-7. `ja_bert` - Japanese BERT features (768-dim)
-8. `sdp_ratio` - SDP ratio
-9. `noise_scale` - Noise scale
-10. `noise_scale_w` - Noise weight
-11. `speed` - Speech speed
+1. `x_tst` - 文本 token IDs
+2. `x_tst_lengths` - 文本长度
+3. `speakers` - 发音人 ID
+4. `tones` - 音调 IDs
+5. `lang_ids` - 语言 IDs
+6. `bert` - BERT 特征 (1024维)
+7. `ja_bert` - 日文 BERT 特征 (768维)
+8. `sdp_ratio` - SDP 比率
+9. `noise_scale` - 噪声尺度
+10. `noise_scale_w` - 噪声权重
+11. `speed` - 语速
 
-**ONNX Model Output (1):**
+**ONNX 模型输出 (1个)：**
 
-- `audio_data` - Generated audio data
-
----
-
-**ONNX Static Model Inputs (10):**
-
-1. `x_tst` - Text token IDs
-2. `x_tst_lengths` - Text length
-3. `speakers` - Speaker ID
-4. `tones` - Tone IDs
-5. `lang_ids` - Language IDs
-6. `bert` - BERT features (1024-dim)
-7. `ja_bert` - Japanese BERT features (768-dim)
-8. `sdp_ratio` - SDP ratio
-9. `noise_scale_w` - Noise weight
-10. `speed` - Speech speed
-
-**ONNX Model Output (1):**
-
-- `audio_data` - Generated audio data
+- `audio_data` - 生成的音频数据
 
 ---
 
-#### Note: The code example is only suitable for deploying Dynamic models. To deploy Static models, please adjust the `generate_audio` method in the code accordingly. Set the Chunk size to 239; if it exceeds this size, split the input into multiple parts for sequential processing, and finally merge all audio segments.
+**ONNX Static模型输入 (10个)：**
 
-### 5. Quick Usage Example
+1. `x_tst` - 文本 token IDs
+2. `x_tst_lengths` - 文本长度
+3. `speakers` - 发音人 ID
+4. `tones` - 音调 IDs
+5. `lang_ids` - 语言 IDs
+6. `bert` - BERT 特征 (1024维)
+7. `ja_bert` - 日文 BERT 特征 (768维)
+8. `sdp_ratio` - SDP 比率
+9. `noise_scale_w` - 噪声权重
+10. `speed` - 语速
+
+**ONNX 模型输出 (1个)：**
+
+- `audio_data` - 生成的音频数据
+
+---
+
+#### 注意: 代码示例只适合Dynamic模型的部署,如需部署Static模型请自行调整代码中的generate_audio方法,请设置Chunk大小为239,超过这个大小就将输入分为多个part依次处理,最后合并所有音频段.
+
+### 5. 快速使用示例
 
 ```python
 """MeloTTS ONNX Runtime Inference
 
 Static ONNX Model Inference:
     ============================================================
-    Model Input Information (Total 10 Inputs)
+    模型输入信息 (共 10 个输入)
     ============================================================
     Input 1: x_tst
-    Data Type: int32
-    Shape: [1, 239]
+    数据类型: int32
+    形状: [1, 239]
 
     Input 2: x_tst_lengths
-    Data Type: int32
-    Shape: [1]
+    数据类型: int32
+    形状: [1]
 
     Input 3: speakers
-    Data Type: int32
-    Shape: [1]
+    数据类型: int32
+    形状: [1]
 
     Input 4: tones
-    Data Type: int32
-    Shape: [1, 239]
+    数据类型: int32
+    形状: [1, 239]
 
     Input 5: lang_ids
-    Data Type: int32
-    Shape: [1, 239]
+    数据类型: int32
+    形状: [1, 239]
 
     Input 6: bert
-    Data Type: float32
-    Shape: [1, 1024, 239]
+    数据类型: float32
+    形状: [1, 1024, 239]
 
     Input 7: ja_bert
-    Data Type: float32
-    Shape: [1, 768, 239]
+    数据类型: float32
+    形状: [1, 768, 239]
 
     Input 8: sdp_ratio
-    Data Type: float32
-    Shape: [1]
+    数据类型: float32
+    形状: [1]
 
     Input 9: noise_scale_w
-    Data Type: float32
-    Shape: [1]
+    数据类型: float32
+    形状: [1]
 
     Input 10: speed
-    Data Type: float32
-    Shape: [1]
+    数据类型: float32
+    形状: [1]
 
     ============================================================
-    Model Output Information (Total 1 Output)
+    模型输出信息 (共 1 个输出)
     ============================================================
     Output 1: audio_data
-    Data Type: float32
-    Shape: [1, 0]
+    数据类型: float32
+    形状: [1, 0]
 
 Dynamic ONNX Model Inference:
     ============================================================
-    ONNX Model Basic Information
+    ONNX模型基本信息
     ============================================================
-    Model File Path: ./models/melotts_onnx/melotts_14_dynamic.onnx
-    ONNX Version: 7
-    Producer Info: pytorch 2.8.0
-    Model Version: 0
-    Description: 
+    模型文件路径: ./models/melotts_onnx/melotts_14_dynamic.onnx
+    ONNX版本: 7
+    生产者信息: pytorch 2.8.0
+    模型版本: 0
+    描述: 
 
     ============================================================
-    Model Input Information (Total 11 Inputs)
+    模型输入信息 (共 11 个输入)
     ============================================================
     Input 1: x_tst
-    Data Type: int32
-    Shape: [0, 0]
+    数据类型: int32
+    形状: [0, 0]
 
     Input 2: x_tst_lengths
-    Data Type: int32
-    Shape: [0]
+    数据类型: int32
+    形状: [0]
 
     Input 3: speakers
-    Data Type: int32
-    Shape: [0]
+    数据类型: int32
+    形状: [0]
 
     Input 4: tones
-    Data Type: int32
-    Shape: [0, 0]
+    数据类型: int32
+    形状: [0, 0]
 
     Input 5: lang_ids
-    Data Type: int32
-    Shape: [0, 0]
+    数据类型: int32
+    形状: [0, 0]
 
     Input 6: bert
-    Data Type: float32
-    Shape: [0, 1024, 0]
+    数据类型: float32
+    形状: [0, 1024, 0]
 
     Input 7: ja_bert
-    Data Type: float32
-    Shape: [0, 768, 0]
+    数据类型: float32
+    形状: [0, 768, 0]
 
     Input 8: sdp_ratio
-    Data Type: float32
-    Shape: [0]
+    数据类型: float32
+    形状: [0]
 
     Input 9: noise_scale
-    Data Type: float32
-    Shape: [0]
+    数据类型: float32
+    形状: [0]
 
     Input 10: noise_scale_w
-    Data Type: float32
-    Shape: [0]
+    数据类型: float32
+    形状: [0]
 
     Input 11: speed
-    Data Type: float32
-    Shape: [0]
+    数据类型: float32
+    形状: [0]
 
     ============================================================
-    Model Output Information (Total 1 Output)
+    模型输出信息 (共 1 个输出)
     ============================================================
     Output 1: audio_data
-    Data Type: float32
-    Shape: [1, 0]
+    数据类型: float32
+    形状: [1, 0]
 
 QNN ONNX Model Inference:
     ============================================================
-    ONNX Model Basic Information
+    ONNX模型基本信息
     ============================================================
-    Model File Path: ./models/melotts_qnn/melotts_14/model.onnx
-    ONNX Version: 11
-    Producer Info: Qualcomm AI Hub Workbench aihub-2026.02.26.0
-    Model Version: 0
-    Description: 
+    模型文件路径: ./models/melotts_qnn/melotts_14/model.onnx
+    ONNX版本: 11
+    生产者信息: Qualcomm AI Hub Workbench aihub-2026.02.26.0
+    模型版本: 0
+    描述: 
 
     ============================================================
-    Model Input Information (Total 10 Inputs)
+    模型输入信息 (共 10 个输入)
     ============================================================
     Input 1: x_tst
-    Data Type: int32
-    Shape: [1, 239]
+    数据类型: int32
+    形状: [1, 239]
 
     Input 2: x_tst_lengths
-    Data Type: int32
-    Shape: [1]
+    数据类型: int32
+    形状: [1]
 
     Input 3: speakers
-    Data Type: int32
-    Shape: [1]
+    数据类型: int32
+    形状: [1]
 
     Input 4: tones
-    Data Type: int32
-    Shape: [1, 239]
+    数据类型: int32
+    形状: [1, 239]
 
     Input 5: lang_ids
-    Data Type: int32
-    Shape: [1, 239]
+    数据类型: int32
+    形状: [1, 239]
 
     Input 6: bert
-    Data Type: float32
-    Shape: [1, 1024, 239]
+    数据类型: float32
+    形状: [1, 1024, 239]
 
     Input 7: ja_bert
-    Data Type: float32
-    Shape: [1, 768, 239]
+    数据类型: float32
+    形状: [1, 768, 239]
 
     Input 8: sdp_ratio
-    Data Type: float32
-    Shape: [1]
+    数据类型: float32
+    形状: [1]
 
     Input 9: noise_scale_w
-    Data Type: float32
-    Shape: [1]
+    数据类型: float32
+    形状: [1]
 
     Input 10: speed
-    Data Type: float32
-    Shape: [1]
+    数据类型: float32
+    形状: [1]
 
     ============================================================
-    Model Output Information (Total 1 Output)
+    模型输出信息 (共 1 个输出)
     ============================================================
     Output 1: audio_data
-    Data Type: float32
-    Shape: [1, 429568]
+    数据类型: float32
+    形状: [1, 429568]
 
     ============================================================
-    Model Weight Information (Total 0 Parameters)
+    模型权重信息 (共 0 个参数)
     ============================================================
-    Total Model Parameters: 0
+    模型总参数量: 0
 
     ============================================================
-    Model Operator Information (Total 1 Operator)
+    模型运算符信息 (共 1 个运算符)
     ============================================================
-    Operator Type        | Count
+    运算符类型           | 使用次数
     ------------------------------
     EPContext       | 1
 
-    Detailed Layer Information:
+    详细层信息:
     ------------------------------------------------------------
-    Layer 1: QNNContext (EPContext)
-    Inputs: x_tst, x_tst_lengths, speakers, tones, lang_ids, bert, ja_bert, sdp_ratio, noise_scale_w, speed
-    Outputs: audio_data
-    Attributes:
+    层 1: QNNContext (EPContext)
+    输入: x_tst, x_tst_lengths, speakers, tones, lang_ids, bert, ja_bert, sdp_ratio, noise_scale_w, speed
+    输出: audio_data
+    属性:
         - embed_mode: 
         - ep_cache_context: ./model.bin
         - source: QNN
 
 
     ============================================================
-    Additional Information
+    额外信息
     ============================================================
-    Import Version: -13
-    Model Graph Name: qnn-onnx-model
+    导入版本: -13
+    模型计算图名称: qnn-onnx-model
 """
 
 
@@ -810,8 +845,8 @@ class MeloTTS:
         for part in range(num_part):
             start = part * chunk_size
             end = min((part + 1) * chunk_size, total_len)
-            actual_len = end - start  # ← Save actual length, do not overwrite
-            pad_len = chunk_size - actual_len  # ← Length needed for padding
+            actual_len = end - start  # ← 保存实际长度，不被覆盖
+            pad_len = chunk_size - actual_len  # ← 需要补的长度
             
             x_tst_part    = x_tst[:, start:end]
             tone_part      = tones[:, start:end]
@@ -819,7 +854,7 @@ class MeloTTS:
             bert_part      = bert[:, :, start:end]
             ja_bert_part   = ja_bert[:, :, start:end]
             
-            # Use actual_len for judgment, use pad_len for padding
+            # 统一用 actual_len 判断，用 pad_len 补齐
             if pad_len > 0:
                 x_tst_part   = np.pad(x_tst_part,   ((0, 0), (0, pad_len)),      constant_values=0)
                 tone_part     = np.pad(tone_part,     ((0, 0), (0, pad_len)),      constant_values=0)
@@ -827,7 +862,7 @@ class MeloTTS:
                 bert_part     = np.pad(bert_part,     ((0, 0), (0, 0), (0, pad_len)), constant_values=0)
                 ja_bert_part  = np.pad(ja_bert_part,  ((0, 0), (0, 0), (0, pad_len)), constant_values=0)
             
-            # x_tst_lengths passes the actual length (model internally uses mask), shape fixed to chunk_size
+            # x_tst_lengths 传实际长度（模型内部用 mask 处理），shape固定为chunk_size
             x_tst_lengths_part = np.array([actual_len], dtype=np.int32)
             
             logger.info(f"part {part}: start={start}, end={end}, actual_len={actual_len}, pad_len={pad_len}")
@@ -849,8 +884,8 @@ class MeloTTS:
             
             output_spec = self.session.run(self.output_names, input_spec)[0]
             
-            # Static model output fixed length, only take valid part
-            # Estimate valid audio length proportionally (actual_len / chunk_size)
+            # 静态模型输出固定长度，只取有效部分
+            # 按比例估算有效音频长度（actual_len / chunk_size）
             audio_full = np.squeeze(output_spec, axis=0)  # [audio_len]
             if pad_len > 0:
                 valid_audio_len = int(audio_full.shape[0] * actual_len / chunk_size)
@@ -925,7 +960,7 @@ if __name__ == "__main__":
     msg_info = "Run MeloTTS ONNX Inference. Both Support Dynamic and Static Model."
     
     usg_info = """
-    Dynamic Model:
+    Dynaic Model:
         python run_onnx.py -m ./models/melotts_onnx/ -o ./ -d qnn -i -t "你好，我是中英混合模型。Hello I am a mixed language model.我支持数字123" -l ZH_MIX_EN -sdp 0.2 -ns 0.667 -nsw 0.8 -s 1.0
     
     Static Model:
@@ -980,13 +1015,3 @@ if __name__ == "__main__":
     os.makedirs(args.output_path, exist_ok=True)
     sf.write(audio_save_path, audio, sr)
 ```
-
-#### Acknowledgements:
-
-  - This project is based on the [MeloTTS](https://github.com/myshell-ai/MeloTTS) project.
-  - Model conversion uses the [Onnx](https://onnx.ai/) framework.
-  - Inference uses the [Onnx Runtime](https://onnxruntime.ai/) framework.
-
-#### Contact:
-
-  - WeChat Official Account: "CrazyNET"
