@@ -21,6 +21,9 @@ tags:
   - Qualcomm
   - QCS8550
 ---
+
+![MeloTTS](./rep_sources/melotts.png)
+
 ## MeloTTS-ONNX 项目详解
 
 ![MIT License](./rep_sources/License-MIT-yellow.png)
@@ -408,7 +411,7 @@ named_inputs = {
 }
 ```
 
-- 因为原声MeloTTS源码中采用DP + SDP的方案保证音频质量，动态计算frames，但是FP16在QNN EP中会自动崩掉，在这里小编也不知道原因，所以咋们就直接采用固定frames的方案来直接规避掉FP16精度计算崩掉的问题，而且模型计算单元也从复杂的2372减小到了1760, 在计算精度上也基本没有什么损失，而且还加速了运算速度，简直是一石二鸟的买卖。
+- 原始MeloTTS源码中采用DP + SDP的方案保证音频质量并动态计算frames，但QNN HTP fp16下两个模块都会精度崩溃（encoder → duration predictor 链路累积误差 + exp 下溢）。我们直接绕过整个duration predictor，改用固定4帧/token方案，彻底规避fp16精度问题。详细QNN适配原理见 [UPDATE.md](./UPDATE.md)。
 
 ---
 

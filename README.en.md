@@ -23,6 +23,8 @@ tags:
   - QCS8550
 ---
 
+![MeloTTS](./rep_sources/melotts.png)
+
 ## MeloTTS-ONNX Project Details
 
 ![MIT License](./rep_sources/License-MIT-yellow.png)
@@ -410,7 +412,7 @@ named_inputs = {
 }
 ```
 
-- The original MeloTTS source code uses a DP + SDP scheme to ensure audio quality by dynamically computing frames. However, FP16 on the QNN EP will automatically crash; the reason is currently unknown. Thus, we directly adopt a fixed-frame approach to avoid the FP16 precision computation crash. Additionally, the model computational units are reduced from the complex 2372 to 1760, with almost no loss in computational precision, and it even accelerates the computation speed – truly a win-win deal.
+- The original MeloTTS source code uses a DP + SDP scheme to ensure audio quality by dynamically computing frames. However, on QNN HTP, both modules produce incorrect output under fp16 precision (encoder → duration predictor chain collapse, `exp()` underflow). We bypass the entire duration predictor and use a fixed 4 frames/token instead, completely avoiding fp16 precision issues. For a detailed explanation of all QNN adaptations, see [UPDATE.md](./UPDATE.md).
 
 ---
 
