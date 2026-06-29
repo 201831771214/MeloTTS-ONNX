@@ -1,3 +1,4 @@
+```markdown
 ---
 license: Apache License 2.0
 language:
@@ -22,8 +23,6 @@ tags:
   - QCS8550
 ---
 
-[EN](./README.en.md) | [ZH](./README.md)
-
 ## MeloTTS-ONNX Project Details
 
 ![MIT License](./rep_sources/License-MIT-yellow.png)
@@ -34,31 +33,28 @@ tags:
 
 ### 1. Project Overview
 
-**MeloTTS-ONNX** is the ONNX inference version of [MeloTTS](https://github.com/MoonshotAI/MeloTTS), specifically optimized for **CPU real-time inference**. The project supports:
+**MeloTTS-ONNX** is an ONNX inference version of [MeloTTS](https://github.com/MoonshotAI/MeloTTS), optimized specifically for **real-time CPU inference**. The project supports:
 
 - ✅ Chinese-English mixed TTS
 - ✅ Multiple languages: Chinese, English, Japanese, Korean, Spanish, French, etc.
-- ✅ ONNX Runtime inference, fast inference speed
-- ✅ Static & Dynamic ONNX model export
-- ✅ QNN Execution Provider for Qualcomm HTP deployment
-- ✅ Chunked inference for long text with adaptive silence trimming
+- ✅ ONNX Runtime inference with fast speed
 
 ---
 
-#### Repository Links
+#### Repository Addresses
 
 - Gitee: https://gitee.com/jackroing/melo-tts-onnx.git
 - GitHub: https://github.com/201831771214/MeloTTS-ONNX.git
-- ModelScope Model: https://www.modelscope.cn/models/KeanuX/MeloTTS-ZH-MIXED-EN-ONNX
+- ModelScope Model Repository: https://www.modelscope.cn/models/KeanuX/MeloTTS-ZH-MIXED-EN-ONNX
 
 ```shell
-# Clone via Gitee
+# Clone from Gitee
 git clone https://gitee.com/jackroing/melo-tts-onnx.git
 
-# Clone via GitHub
+# Clone from GitHub
 git clone https://github.com/201831771214/MeloTTS-ONNX.git
 
-# Download model
+# Download models
 modelscope download --model KeanuX/MeloTTS-ZH-MIXED-EN-ONNX --local_dir ./
 ```
 
@@ -77,10 +73,10 @@ melo-tts-onnx/
 │   ├── train.py / train.sh    # Training scripts
 │   └── ...
 │
-├── melo_extra/                # Text processing modules required for inference
+├── melo_extra/                # Text processing modules used during inference
 │   ├── melo_tts.py            # ONNX export wrapper
 │   └── inference/
-│       ├── text/              # Inference text processing (corresponds to melo/text)
+│       ├── text/              # Text processing for inference (corresponds to melo/text)
 │       ├── commons.py         # Common utilities
 │       └── utils.py           # Parameter configuration
 │
@@ -91,7 +87,7 @@ melo-tts-onnx/
 │
 ├── run_onnx.py                # ⭐ Core inference script
 ├── export_melo.py             # ONNX export script
-├── export_model_info.py       # Model information export tool
+├── export_model_info.py       # Model information export utility
 └── README.md
 ```
 
@@ -101,194 +97,324 @@ melo-tts-onnx/
 
 #### 3.1 Inference Script: `run_onnx.py`
 
-This is the **most commonly used script** for converting text to speech:
+This is the **most frequently used script** for converting text to speech:
 
 ```python
 from run_onnx import MeloTTS
 
 # Initialize the model
-model_path = "./models/MeloTTS-ZH-MIXED-EN-ONNX/"
+model_path = "./models/melotts/"
 melo_tts = MeloTTS(model_path, device="cpu")
 
-# Generate audio (dynamic model)
+# Generate audio
 audio, sr = melo_tts.generate_audio(
     text="你好，我是中英混合模型。Hello I am a mixed language model.",
-    language="ZH_MIX_EN",      # Language: ZH_MIX_EN, EN, JP, KR etc.
+    language="ZH_MIX_EN",      # Language: ZH_MIX_EN, EN, JP, KR, etc.
     sdp_ratio=0.2,            # SDP ratio
     noise_scale=0.667,        # Noise scale
     noise_scale_w=0.8,        # Noise weight
-    speed=1.0                 # Speech speed
-)
-
-# Or use chunked inference (static model)
-audio, sr = melo_tts.generate_audio_chunked(
-    text="你好，我是中英混合模型。Hello I am a mixed language model.",
-    language="ZH_MIX_EN",
-    sdp_ratio=0.2,
-    noise_scale_w=0.8,
-    speed=1.0,
-    chunk_size=512            # Must match the model's sequence length
+    speed=1.0                 # Speaking speed
 )
 ```
 
-**Main Parameter Description:**
+**Main Parameter Descriptions:**
 
 | Parameter | Description | Default |
-|------|------|--------|
+|-----------|-------------|---------|
 | `text` | Input text | Required |
 | `language` | Language code | `"ZH_MIX_EN"` |
 | `sdp_ratio` | SDP ratio (0-1) | 0.2 |
 | `noise_scale` | Noise scale | 0.667 |
 | `noise_scale_w` | Noise weight | 0.8 |
-| `speed` | Speech speed | 1.0 |
-| `chunk_size` | Chunk size for static model | 512 |
+| `speed` | Speaking speed | 1.0 |
 
 **Supported Language Codes:**
 
 - `ZH_MIX_EN` - Chinese (supports Chinese-English mixing)
 - `EN` - English
-- `JP` - Japanese
-- `KR` - Korean
 - etc.
-
-**Command Line Usage:**
-
-```bash
-# Dynamic model
-python run_onnx.py -d cuda -i -t "你好，我是中英混合模型。Hello I am a mixed language model." -l ZH_MIX_EN
-
-# Static model (auto-detects from model directory)
-python run_onnx.py -d cuda -t "你好，我是中英混合模型。Hello I am a mixed language model." -l ZH_MIX_EN
-```
 
 ---
 
 #### 3.2 ONNX Export Script: `export_melo.py`
 
-Used to export PyTorch models to ONNX format:
+Used to export a PyTorch model to ONNX format:
 
 ```bash
-# Export dynamic model (default)
 python export_melo.py \
     -m /path/to/ckpt \
     -c /path/to/config.json \
     -o /path/to/save_dir \
     --opset 14
-
-# Export static model with sequence_length=512 and reduced mel frames
-python export_melo.py \
-    -m /path/to/ckpt \
-    -c /path/to/config.json \
-    -o /path/to/save_dir \
-    --opset 14 \
-    -sl 512 \
-    -mmf 1024
+    ...
 ```
 
 **Main Parameters:**
 
-| Parameter | Description | Default |
-|------|------|--------|
-| `-m / --ckpt_path` | Model checkpoint path | `./models/MeloTTS-Chinese/checkpoint.pth` |
-| `-c / --cfg_path` | Configuration file path | `./models/MeloTTS-Chinese/config.json` |
-| `-o / --output_path` | Output directory | `./models/` |
-| `--opset` | ONNX opset version | 14 |
-| `-id / --is_dynamic` | Export with dynamic axes | disabled |
-| `-t / --test_txt` | Test text for dummy input | (Chinese text) |
-| `-sl / --seq_len` | Target text sequence length (pads/truncates) | None |
-| `-mmf / --max_mel_frames` | Max mel-spectrogram frames (lower = less memory) | 1024 |
-| `-sr / --sdp_ratio` | SDP ratio | 0.5 |
-| `-ns / --noise_scale` | Noise scale | 0.667 |
-| `-sp / --speed` | Speed | 1.0 |
+- `--ckpt_path` - Model checkpoint path
+- `--cfg_path` - Configuration file path
+- `--output_path` - Output ONNX file path
+- `--opset` - ONNX opset version (default 14)
 
 ---
 
 #### 3.3 Model Information Export: `export_model_info.py`
 
-Used to export detailed information about the ONNX model (input/output shapes, parameter count, etc.):
+Used to export detailed information about an ONNX model (input/output shapes, parameter count, etc.):
 
 ```bash
-python export_model_info.py -m ./models/melotts_onnx/melotts_14_dynamic.onnx -o ./infos/melotts_14.info
+python export_model_info.py -m ./models/melotts/melotts_14.onnx -o ./infos/melotts_14.info
 ```
 
-Output Example:
+Sample output:
 
 ```text
 ============================================================
 ONNX Model Basic Information
 ============================================================
-Model File Path: ./models/melotts_onnx/melotts_14_dynamic.onnx
-ONNX Version: 7
-Producer Info: pytorch 2.8.0
-Model Version: 0
+Model file path: ./models/melotts_onnx/melotts_14_dynamic.onnx
+ONNX version: 7
+Producer: pytorch 2.8.0
+Model version: 0
+Description: 
 
 ============================================================
-Model Input Information (Total 11 Inputs)
+Model Input Information (11 inputs in total)
 ============================================================
-Input 1: x_tst          Data Type: int32     Shape: [0, 0]
-Input 2: x_tst_lengths  Data Type: int32     Shape: [0]
-Input 3: speakers       Data Type: int32     Shape: [0]
-Input 4: tones          Data Type: int32     Shape: [0, 0]
-Input 5: lang_ids       Data Type: int32     Shape: [0, 0]
-Input 6: bert           Data Type: float32   Shape: [0, 1024, 0]
-Input 7: ja_bert        Data Type: float32   Shape: [0, 768, 0]
-Input 8: sdp_ratio      Data Type: float32   Shape: [0]
-Input 9: noise_scale    Data Type: float32   Shape: [0]
-Input 10: noise_scale_w Data Type: float32   Shape: [0]
-Input 11: speed         Data Type: float32   Shape: [0]
+Input 1: x_tst
+  Data type: int32
+  Shape: [0, 0]
+
+Input 2: x_tst_lengths
+  Data type: int32
+  Shape: [0]
+
+Input 3: speakers
+  Data type: int32
+  Shape: [0]
+
+Input 4: tones
+  Data type: int32
+  Shape: [0, 0]
+
+Input 5: lang_ids
+  Data type: int32
+  Shape: [0, 0]
+
+Input 6: bert
+  Data type: float32
+  Shape: [0, 1024, 0]
+
+Input 7: ja_bert
+  Data type: float32
+  Shape: [0, 768, 0]
+
+Input 8: sdp_ratio
+  Data type: float32
+  Shape: [0]
+
+Input 9: noise_scale
+  Data type: float32
+  Shape: [0]
+
+Input 10: noise_scale_w
+  Data type: float32
+  Shape: [0]
+
+Input 11: speed
+  Data type: float32
+  Shape: [0]
 
 ============================================================
-Model Output Information (Total 1 Output)
+Model Output Information (1 output)
 ============================================================
-Output 1: audio_data    Data Type: float32   Shape: [1, 0]
+Output 1: audio_data
+  Data type: float32
+  Shape: [1, 0]
+
 
 ============================================================
 ONNX Model Basic Information
 ============================================================
-Model File Path: ./models/melotts_onnx/melotts_14_static.onnx
-...
+Model file path: ./models/melotts_onnx/melotts_14_static.onnx
+ONNX version: 7
+Producer: pytorch 2.8.0
+Model version: 0
+Description: 
 
 ============================================================
-Model Input Information (Total 10 Inputs)
+Model Input Information (10 inputs in total)
 ============================================================
-Input 1: x_tst          Data Type: int32     Shape: [1, 512]
-Input 2: x_tst_lengths  Data Type: int32     Shape: [1]
-Input 3: speakers       Data Type: int32     Shape: [1]
-Input 4: tones          Data Type: int32     Shape: [1, 512]
-Input 5: lang_ids       Data Type: int32     Shape: [1, 512]
-Input 6: bert           Data Type: float32   Shape: [1, 1024, 512]
-Input 7: ja_bert        Data Type: float32   Shape: [1, 768, 512]
-Input 8: sdp_ratio      Data Type: float32   Shape: [1]
-Input 9: noise_scale_w  Data Type: float32   Shape: [1]
-Input 10: speed         Data Type: float32   Shape: [1]
+Input 1: x_tst
+  Data type: int32
+  Shape: [1, 239]
+
+Input 2: x_tst_lengths
+  Data type: int32
+  Shape: [1]
+
+Input 3: speakers
+  Data type: int32
+  Shape: [1]
+
+Input 4: tones
+  Data type: int32
+  Shape: [1, 239]
+
+Input 5: lang_ids
+  Data type: int32
+  Shape: [1, 239]
+
+Input 6: bert
+  Data type: float32
+  Shape: [1, 1024, 239]
+
+Input 7: ja_bert
+  Data type: float32
+  Shape: [1, 768, 239]
+
+Input 8: sdp_ratio
+  Data type: float32
+  Shape: [1]
+
+Input 9: noise_scale_w
+  Data type: float32
+  Shape: [1]
+
+Input 10: speed
+  Data type: float32
+  Shape: [1]
 
 ============================================================
-QNN Precompiled Model Information
+Model Output Information (1 output)
 ============================================================
-...
-Output 1: audio_data    Data Type: float32   Shape: [1, 429568]
-...
-Operator Type           | Count
+Output 1: audio_data
+  Data type: float32
+  Shape: [1, 0]
+
+============================================================
+ONNX Model Basic Information
+============================================================
+Model file path: ./melo_tts_qnn/model.onnx
+ONNX version: 11
+Producer: Qualcomm AI Hub Workbench aihub-2026.02.26.0
+Model version: 0
+Description: 
+
+============================================================
+Model Input Information (10 inputs in total)
+============================================================
+Input 1: x_tst
+  Data type: int32
+  Shape: [1, 239]
+
+Input 2: x_tst_lengths
+  Data type: int32
+  Shape: [1]
+
+Input 3: speakers
+  Data type: int32
+  Shape: [1]
+
+Input 4: tones
+  Data type: int32
+  Shape: [1, 239]
+
+Input 5: lang_ids
+  Data type: int32
+  Shape: [1, 239]
+
+Input 6: bert
+  Data type: float32
+  Shape: [1, 1024, 239]
+
+Input 7: ja_bert
+  Data type: float32
+  Shape: [1, 768, 239]
+
+Input 8: sdp_ratio
+  Data type: float32
+  Shape: [1]
+
+Input 9: noise_scale_w
+  Data type: float32
+  Shape: [1]
+
+Input 10: speed
+  Data type: float32
+  Shape: [1]
+
+============================================================
+Model Output Information (1 output)
+============================================================
+Output 1: audio_data
+  Data type: float32
+  Shape: [1, 429568]
+
+============================================================
+Model Weight Information (0 parameters in total)
+============================================================
+Total parameters: 0
+
+============================================================
+Model Operator Information (1 operator in total)
+============================================================
+Operator Type       | Count
 ------------------------------
-EPContext               | 1
+EPContext       | 1
+
+Detailed Layer Information:
+------------------------------------------------------------
+Layer 1: QNNContext (EPContext)
+  Inputs: x_tst, x_tst_lengths, speakers, tones, lang_ids, bert, ja_bert, sdp_ratio, noise_scale_w, speed
+  Outputs: audio_data
+  Attributes:
+    - embed_mode: 
+    - ep_cache_context: ./model.bin
+    - source: QNN
+
+
+============================================================
+Additional Information
+============================================================
+IR version: -13
+Graph name: qnn-onnx-model
 ```
 
 #### Update Information
-
-MeloTTS ONNX Static Model Updates:
-- Increased sequence length from 239 → 512
-- Reduced intermediate layer parameters to half (max_mel_frames: 2048 → 1024)
-- Added adaptive silence trimming for precise audio output
+Updated MeloTTS ONNX Static Model:
+- Increased the sequence length of the melotts_14_static.onnx model to 512, reducing the intermediate parameter count by half.
 
 #### Precompiled QNN ONNX Profile Info
 
-![info0](./rep_sources/info0.png)
-![info1](./rep_sources/info1.png)
-![info2](./rep_sources/info2.png)
+![info0](./rep_sources/0.png)
+![info1](./rep_sources/1.png)
+
+#### Dear developers, when running the MeloTTS QNN ONNX EP, please disable the following inputs:
+
+```python
+# Inside generate_audio_chunked or generate_audio
+
+named_inputs = {
+    "x_tst": x_tst_part,
+    "x_tst_lengths": x_tst_lengths_part,
+    "speakers": speaker_id,
+    "tones": tone_part,
+    "lang_ids": lang_ids_part,
+    "bert": bert_part,
+    "ja_bert": ja_bert_part,
+    "sdp_ratio": np_sdp_ratio,
+    # "noise_scale": np_noise_scale,
+    # "noise_scale_w": np_noise_scale_w,
+    # "speed": np_speed,
+}
+```
+
+- The original MeloTTS source code uses a DP + SDP scheme to ensure audio quality by dynamically computing frames. However, FP16 on the QNN EP will automatically crash; the reason is currently unknown. Thus, we directly adopt a fixed-frame approach to avoid the FP16 precision computation crash. Additionally, the model computational units are reduced from the complex 2372 to 1760, with almost no loss in computational precision, and it even accelerates the computation speed – truly a win-win deal.
 
 ---
 
-### 4. How It Works
+### 4. Working Principle
 
 ```
 Text Input
@@ -296,15 +422,15 @@ Text Input
 ┌─────────────────────────────────────────┐
 │  Text Preprocessing (clean_text)        │
 │  - Tokenization                         │
-│  - Convert to phoneme                    │
-│  - Get tone                              │
-│  - BERT Feature Extraction               │
+│  - Conversion to phoneme                │
+│  - Tone extraction                      │
+│  - BERT feature extraction              │
 └─────────────────────────────────────────┘
    ↓
 ┌─────────────────────────────────────────┐
-│  ONNX Model Inference                    │
-│  - Glow-TTS (Text → Mel Spectrogram)    │
-│  - HiFi-GAN (Mel Spectrogram → Audio)   │
+│  ONNX Model Inference                   │
+│  - Glow-TTS (text → mel spectrogram)    │
+│  - HiFi-GAN (mel spectrogram → audio)   │
 └─────────────────────────────────────────┘
    ↓
 Audio Output (44.1kHz)
@@ -317,12 +443,12 @@ Audio Output (44.1kHz)
 3. `speakers` - Speaker ID
 4. `tones` - Tone IDs
 5. `lang_ids` - Language IDs
-6. `bert` - BERT features (1024-dim)
-7. `ja_bert` - Japanese BERT features (768-dim)
+6. `bert` - BERT features (1024 dimensions)
+7. `ja_bert` - Japanese BERT features (768 dimensions)
 8. `sdp_ratio` - SDP ratio
 9. `noise_scale` - Noise scale
 10. `noise_scale_w` - Noise weight
-11. `speed` - Speech speed
+11. `speed` - Speaking speed
 
 **ONNX Model Output (1):**
 
@@ -330,18 +456,18 @@ Audio Output (44.1kHz)
 
 ---
 
-**ONNX Static Model Inputs (10):** (no `noise_scale`; shapes are frozen)
+**ONNX Static Model Inputs (10):**
 
-1. `x_tst` - Text token IDs (shape: [1, 512])
+1. `x_tst` - Text token IDs
 2. `x_tst_lengths` - Text length
 3. `speakers` - Speaker ID
 4. `tones` - Tone IDs
 5. `lang_ids` - Language IDs
-6. `bert` - BERT features (1024-dim)
-7. `ja_bert` - Japanese BERT features (768-dim)
+6. `bert` - BERT features (1024 dimensions)
+7. `ja_bert` - Japanese BERT features (768 dimensions)
 8. `sdp_ratio` - SDP ratio
 9. `noise_scale_w` - Noise weight
-10. `speed` - Speech speed
+10. `speed` - Speaking speed
 
 **ONNX Model Output (1):**
 
@@ -349,64 +475,216 @@ Audio Output (44.1kHz)
 
 ---
 
-#### Note:
+#### Note: The code example is only suitable for deploying the Dynamic model. To deploy the Static model, please adjust the `generate_audio` method in the code accordingly. Set the chunk size to 239; if the input exceeds this size, split it into multiple parts for sequential processing, and finally merge all audio segments.
 
-- Dynamic models support variable-length input (no padding needed), suitable for CPU/CUDA deployment.
-- Static models require fixed-length input (padded to 512 tokens), producing fixed-length output that is trimmed by RMS-based silence detection. Suitable for QNN HTP deployment.
-- For static models, set `chunk_size` equal to the model's sequence length (512). If input exceeds this, it will be automatically split into multiple chunks, and audio segments concatenated.
-
----
-
-### 5. Quick Usage Example
+### 5. Quick Start Example
 
 ```python
 """MeloTTS ONNX Runtime Inference
 
 Static ONNX Model Inference:
     ============================================================
-    Model Input Information (Total 10 Inputs)
+    Model Input Information (10 inputs in total)
     ============================================================
-    Input 1: x_tst          Data Type: int32     Shape: [1, 512]
-    Input 2: x_tst_lengths  Data Type: int32     Shape: [1]
-    Input 3: speakers       Data Type: int32     Shape: [1]
-    Input 4: tones          Data Type: int32     Shape: [1, 512]
-    Input 5: lang_ids       Data Type: int32     Shape: [1, 512]
-    Input 6: bert           Data Type: float32   Shape: [1, 1024, 512]
-    Input 7: ja_bert        Data Type: float32   Shape: [1, 768, 512]
-    Input 8: sdp_ratio      Data Type: float32   Shape: [1]
-    Input 9: noise_scale_w  Data Type: float32   Shape: [1]
-    Input 10: speed         Data Type: float32   Shape: [1]
+    Input 1: x_tst
+     Data type: int32
+     Shape: [1, 239]
+
+    Input 2: x_tst_lengths
+     Data type: int32
+     Shape: [1]
+
+    Input 3: speakers
+     Data type: int32
+     Shape: [1]
+
+    Input 4: tones
+     Data type: int32
+     Shape: [1, 239]
+
+    Input 5: lang_ids
+     Data type: int32
+     Shape: [1, 239]
+
+    Input 6: bert
+     Data type: float32
+     Shape: [1, 1024, 239]
+
+    Input 7: ja_bert
+     Data type: float32
+     Shape: [1, 768, 239]
+
+    Input 8: sdp_ratio
+     Data type: float32
+     Shape: [1]
+
+    Input 9: noise_scale_w
+     Data type: float32
+     Shape: [1]
+
+    Input 10: speed
+     Data type: float32
+     Shape: [1]
+
+    ============================================================
+    Model Output Information (1 output)
+    ============================================================
+    Output 1: audio_data
+     Data type: float32
+     Shape: [1, 0]
 
 Dynamic ONNX Model Inference:
     ============================================================
-    Model Input Information (Total 11 Inputs)
+    ONNX Model Basic Information
     ============================================================
-    Input 1: x_tst          Data Type: int32     Shape: [0, 0]
-    Input 2: x_tst_lengths  Data Type: int32     Shape: [0]
-    Input 3: speakers       Data Type: int32     Shape: [0]
-    Input 4: tones          Data Type: int32     Shape: [0, 0]
-    Input 5: lang_ids       Data Type: int32     Shape: [0, 0]
-    Input 6: bert           Data Type: float32   Shape: [0, 1024, 0]
-    Input 7: ja_bert        Data Type: float32   Shape: [0, 768, 0]
-    Input 8: sdp_ratio      Data Type: float32   Shape: [0]
-    Input 9: noise_scale    Data Type: float32   Shape: [0]
-    Input 10: noise_scale_w Data Type: float32   Shape: [0]
-    Input 11: speed         Data Type: float32   Shape: [0]
+    Model file path: ./models/melotts_onnx/melotts_14_dynamic.onnx
+    ONNX version: 7
+    Producer: pytorch 2.8.0
+    Model version: 0
+    Description: 
+
+    ============================================================
+    Model Input Information (11 inputs in total)
+    ============================================================
+    Input 1: x_tst
+     Data type: int32
+     Shape: [0, 0]
+
+    Input 2: x_tst_lengths
+     Data type: int32
+     Shape: [0]
+
+    Input 3: speakers
+     Data type: int32
+     Shape: [0]
+
+    Input 4: tones
+     Data type: int32
+     Shape: [0, 0]
+
+    Input 5: lang_ids
+     Data type: int32
+     Shape: [0, 0]
+
+    Input 6: bert
+     Data type: float32
+     Shape: [0, 1024, 0]
+
+    Input 7: ja_bert
+     Data type: float32
+     Shape: [0, 768, 0]
+
+    Input 8: sdp_ratio
+     Data type: float32
+     Shape: [0]
+
+    Input 9: noise_scale
+     Data type: float32
+     Shape: [0]
+
+    Input 10: noise_scale_w
+     Data type: float32
+     Shape: [0]
+
+    Input 11: speed
+     Data type: float32
+     Shape: [0]
+
+    ============================================================
+    Model Output Information (1 output)
+    ============================================================
+    Output 1: audio_data
+     Data type: float32
+     Shape: [1, 0]
 
 QNN ONNX Model Inference:
     ============================================================
-    Model Input Information (Total 10 Inputs)
+    ONNX Model Basic Information
     ============================================================
-    Input 1: x_tst          Data Type: int32     Shape: [1, 512]
-    Input 2: x_tst_lengths  Data Type: int32     Shape: [1]
-    Input 3: speakers       Data Type: int32     Shape: [1]
-    Input 4: tones          Data Type: int32     Shape: [1, 512]
-    Input 5: lang_ids       Data Type: int32     Shape: [1, 512]
-    Input 6: bert           Data Type: float32   Shape: [1, 1024, 512]
-    Input 7: ja_bert        Data Type: float32   Shape: [1, 768, 512]
-    Input 8: sdp_ratio      Data Type: float32   Shape: [1]
-    Input 9: noise_scale_w  Data Type: float32   Shape: [1]
-    Input 10: speed         Data Type: float32   Shape: [1]
+    Model file path: ./models/melotts_qnn/melotts_14/model.onnx
+    ONNX version: 11
+    Producer: Qualcomm AI Hub Workbench aihub-2026.02.26.0
+    Model version: 0
+    Description: 
+
+    ============================================================
+    Model Input Information (10 inputs in total)
+    ============================================================
+    Input 1: x_tst
+     Data type: int32
+     Shape: [1, 239]
+
+    Input 2: x_tst_lengths
+     Data type: int32
+     Shape: [1]
+
+    Input 3: speakers
+     Data type: int32
+     Shape: [1]
+
+    Input 4: tones
+     Data type: int32
+     Shape: [1, 239]
+
+    Input 5: lang_ids
+     Data type: int32
+     Shape: [1, 239]
+
+    Input 6: bert
+     Data type: float32
+     Shape: [1, 1024, 239]
+
+    Input 7: ja_bert
+     Data type: float32
+     Shape: [1, 768, 239]
+
+    Input 8: sdp_ratio
+     Data type: float32
+     Shape: [1]
+
+    Input 9: noise_scale_w
+     Data type: float32
+     Shape: [1]
+
+    Input 10: speed
+     Data type: float32
+     Shape: [1]
+
+    ============================================================
+    Model Output Information (1 output)
+    ============================================================
+    Output 1: audio_data
+     Data type: float32
+     Shape: [1, 429568]
+
+    ============================================================
+    Model Weight Information (0 parameters in total)
+    ============================================================
+    Total parameters: 0
+
+    ============================================================
+    Model Operator Information (1 operator in total)
+    ============================================================
+    Operator Type       | Count
+    ------------------------------
+    EPContext       | 1
+
+    Detailed Layer Information:
+    ------------------------------------------------------------
+    Layer 1: QNNContext (EPContext)
+     Inputs: x_tst, x_tst_lengths, speakers, tones, lang_ids, bert, ja_bert, sdp_ratio, noise_scale_w, speed
+     Outputs: audio_data
+     Attributes:
+        - embed_mode: 
+        - ep_cache_context: ./model.bin
+        - source: QNN
+
+
+    ============================================================
+    Additional Information
+    ============================================================
+    IR version: -13
+    Graph name: qnn-onnx-model
 """
 
 
@@ -433,37 +711,41 @@ logger.setLevel(logging.INFO)
 
 class MeloTTS:
     def __init__(self, model_root:str, device:str="cpu", provider_options:list[dict]=None, is_dynamic:bool=True) -> None:
+        self.hop_size = 512  # Generator upsampling factor
         self.model_list = {}
         
         for f in os.listdir(model_root):
             if f.endswith(".onnx"):
-                self.model_list[f] = os.path.join(model_root, f)
-                logger.info(f"find model: {f}")
+                f_name = f[0:]
+                logger.info(f"find model: {f_name}")
+                self.model_list[f_name] = os.path.join(model_root, f)
         
         if is_dynamic:
-            for k, v in self.model_list.items():
-                if "dynamic" in k.lower():
-                    self.model_name = v
+            for m_k, m_v in self.model_list.items():
+                if "dynamic" in m_k.lower():
+                    self.model_name = m_v
                     break
-            else:
-                self.model_name = None
+                else:
+                    self.model_name = None
+                    continue
         else:
             if device == "qnn":
                 self.model_name = os.path.join(model_root, "precompiled_qnn_onnx", "model.onnx")
             else:
-                for k, v in self.model_list.items():
-                    if "static" in k.lower():
-                        self.model_name = v
+                for m_k, m_v in self.model_list.items():
+                    if "static" in m_k.lower():
+                        self.model_name = m_v
                         break
-                else:
-                    self.model_name = None
+                    else:
+                        self.model_name = None
+                        continue
         
-        if self.model_name is None:
-            logger.error(f"model not found in: {model_root}")
+        if self.model_name == None:
+            logger.error(f"model name not found, please check model root: {model_root}")
             sys.exit(1)
         
         logger.info(f"Use model: {self.model_name}")
-        self.model_path = self.model_name
+        self.model_path = os.path.join(self.model_name)
         self.cfg_path = os.path.join(model_root, "config.json")
         self.bert_model_path = os.path.join(model_root, "bert-base-multilingual-uncased")
         
@@ -474,38 +756,85 @@ class MeloTTS:
             self.providers = ["CUDAExecutionProvider"]
         elif device == "cpu":
             self.providers = ["CPUExecutionProvider"]
-        elif device == "qnn" and "QNNExecutionProvider" in ort.get_available_providers() and provider_options is not None:
+        elif device == "qnn" and "QNNExecutionProvider" in ort.get_available_providers() and provider_options != None:
             self.providers = ["QNNExecutionProvider"]
         else:
-            logger.info(f"device {device} not supported, falling back to CPU")
+            logger.info(f"device {device} not supported, use cpu instead")
             self.providers = ["CPUExecutionProvider"]
-        
+            
         self.provider_options = provider_options if self.providers == ["QNNExecutionProvider"] else None
+        
         self.session = ort.InferenceSession(self.model_path, providers=self.providers, provider_options=provider_options)
-        self.input_names = [i.name for i in self.session.get_inputs()]
-        self.output_names = [o.name for o in self.session.get_outputs()]
+        logger.info(f"Using EP: {self.session.get_providers()}, model inputs: {len(self.session.get_inputs())}")
+        
+        self.input_names = [input.name for input in self.session.get_inputs()]
+        self.output_names = [output.name for output in self.session.get_outputs()]
+        
+        # Automatically detect floating-point dtype: matches the model's expected precision (fp32 or fp16)
+        onnx_dtype_to_np = {1: np.float32, 10: np.float16}  # TensorProto.FLOAT=1, FLOAT16=10
+        self.float_dtype = np.float32  # default
+        for inp in self.session.get_inputs():
+            if inp.name == "bert":  # bert feature must be a floating-point input
+                self.float_dtype = onnx_dtype_to_np.get(inp.type, np.float32)
+                break
+        
+        logger.info(f"model input names: {self.input_names}")
+        logger.info(f"model output names: {self.output_names}")
+        logger.info(f"auto-detected float dtype: {self.float_dtype}")
     
     @staticmethod
     def _trim_trailing_silence(audio: np.ndarray) -> np.ndarray:
-        """Trim trailing idle noise using RMS energy detection."""
+        """Trim trailing silence.
+
+        Uses RMS energy instead of peak – idle noise may have occasional spikes (~0.06), but RMS
+        energy is much lower than real speech, providing better discrimination than peak.
+        """
         if len(audio) < 2048:
             return audio
+
+        # Diagnostics: output overall statistics
+        logger.info(f"_trim: audio_len={len(audio)}, min={audio.min():.6f}, "
+                    f"max={audio.max():.6f}, mean={np.abs(audio).mean():.6f}, "
+                    f"nonzero_ratio={np.count_nonzero(audio)/len(audio):.4f}")
+
         win = 512
+        # RMS energy per frame (more discriminative than peak)
         frame_rms = np.array([
             np.sqrt(np.mean(audio[i:i+win].astype(np.float64) ** 2))
             for i in range(0, len(audio) - win, win)
         ])
+
+        # Last 10% frames = idle noise RMS
         tail_n = max(1, len(frame_rms) // 10)
         idle_rms = np.max(frame_rms[-tail_n:])
+
+        # Threshold = max(idle × 3, absolute lower bound 5e-4)
         threshold = max(idle_rms * 3, 5e-4)
+
+        logger.info(f"_trim: total_frames={len(frame_rms)}, tail={tail_n}, "
+                    f"idle_rms={idle_rms:.6f}, threshold={threshold:.6f}, "
+                    f"max_rms={frame_rms.max():.6f}")
+
         above = np.where(frame_rms > threshold)[0]
         if len(above) == 0:
+            logger.warning("_trim: no frame above threshold, returning empty")
             return audio[:0]
+
         cut_frame = above[-1] + 1
         cut_sample = min(cut_frame * win, len(audio))
+        logger.info(f"_trim: cut at frame {above[-1]}/{len(frame_rms)}, "
+                    f"sample {cut_sample}/{len(audio)}")
         return audio[:cut_sample]
 
     def __preprocess(self, text:str, language:str):
+        """Preprocess text input
+        Args:
+            text (str): Input text to be preprocessed.
+            language (str): Language of the input text.
+        
+        Returns:
+            Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]: Preprocessed tensors ready for inference.
+        """
         norm_text, phone, tone, word2ph = clean_text(text, language)
         symbol_to_id = {s: i for i, s in enumerate(self.cfg.symbols)}
         phone, tone, language = cleaned_text_to_sequence(phone, tone, language, symbol_to_id)
@@ -519,78 +848,188 @@ class MeloTTS:
             word2ph[0] += 1
         
         if getattr(self.cfg.data, "disable_bert", True):
-            bert = np.zeros((1024, len(phone)), dtype=np.float32)
-            ja_bert = np.zeros((768, len(phone)), dtype=np.float32)
+            bert = np.zeros((1024, len(phone)), dtype=self.float_dtype)
+            ja_bert = np.zeros((768, len(phone)), dtype=self.float_dtype)
         else:
             bert = get_zh_mix_en_bert(self.bert_model_path, text, word2ph, "cpu")
             del word2ph
+            assert bert.shape[-1] == len(phone), phone
+
             if language == "ZH":
-                ja_bert = np.zeros((768, len(phone)), dtype=np.float32)
+                bert = bert.astype(self.float_dtype)
+                ja_bert = np.zeros((768, len(phone)), dtype=self.float_dtype)
+            elif language in ["JP", "EN", "ZH_MIX_EN", 'KR', 'SP', 'ES', 'FR', 'DE', 'RU']:
+                ja_bert = bert.astype(self.float_dtype)
+                bert = np.zeros((1024, len(phone)), dtype=self.float_dtype)
             else:
-                ja_bert = bert
-                bert = np.zeros((1024, len(phone)), dtype=np.float32)
+                raise NotImplementedError()
         
-        return (
-            np.expand_dims(np.array(phone, dtype=np.int32), 0),
-            np.array([len(phone)], dtype=np.int32),
-            np.array([1], dtype=np.int32),
-            np.expand_dims(np.array(tone, dtype=np.int32), 0),
-            np.expand_dims(np.array(language, dtype=np.int32), 0),
-            np.expand_dims(bert, 0),
-            np.expand_dims(ja_bert, 0),
-        )
+        assert bert.shape[-1] == len(
+            phone
+        ), f"Bert seq len {bert.shape[-1]} != {len(phone)}"
+
+        phone = np.array(phone, dtype=np.int32)
+        tone = np.array(tone, dtype=np.int32)
+        language = np.array(language, dtype=np.int32)
+        
+        x_tst = np.expand_dims(phone, axis=0)
+        x_tst_lengths = np.array([phone.size], dtype=np.int32)
+        tones = np.expand_dims(tone, axis=0)
+        lang_ids = np.expand_dims(language, axis=0)
+        
+        bert = np.expand_dims(bert, axis=0)
+        ja_bert = np.expand_dims(ja_bert, axis=0)
+        
+        speaker_id = np.array([1], dtype=np.int32)
+        
+        return x_tst, x_tst_lengths, speaker_id, tones, lang_ids, bert, ja_bert
     
-    def generate_audio_chunked(self, text, language="ZH_MIX_EN", sdp_ratio=0.2,
-                               noise_scale_w=0.8, speed=1.0, chunk_size=512):
+    def generate_audio_chunked(self,
+                           text:str,
+                           language:str="ZH_MIX_EN",
+                           sdp_ratio:float=0.2,
+                           noise_scale_w:float=0.8,
+                           speed:float=1.0,
+                           chunk_size:int=239):
+        """Generate audio in chunks
+        Args:
+            text (str): Input text to be synthesized.
+            language (str, optional): Language of the input text. Defaults to "ZH_MIX_EN".
+            sdp_ratio (float, optional): Ratio for SDP (Speech Decoder Proportion). Defaults to 0.2.
+            noise_scale_w (float, optional): Scale factor for noise. Defaults to 0.8.
+            speed (float, optional): Speed factor for audio playback. Defaults to 1.0.
+            chunk_size (int, optional): Size of audio chunks for processing. Defaults to 239.
+        
+        Returns:
+            Tuple[np.ndarray, int]: Audio data and sample rate
+        """
+        
+        if language.lower() == "zh_mix_en" or language.lower() == "zh":
+            language = "ZH_MIX_EN"
+        elif language.lower() == "en":
+            language = "EN"
+        else:
+            raise ValueError(f"language {language} not supported")
+        
         x_tst, x_tst_lengths, speaker_id, tones, lang_ids, bert, ja_bert = self.__preprocess(text, language)
+        
+        np_sdp_ratio = np.array([sdp_ratio], dtype=self.float_dtype)
+        np_noise_scale = np.array([0.667], dtype=self.float_dtype)
+        np_noise_scale_w = np.array([noise_scale_w], dtype=self.float_dtype)
+        np_speed = np.array([speed], dtype=self.float_dtype)
+        
         total_len = x_tst_lengths[0]
         num_part = total_len // chunk_size + (1 if total_len % chunk_size != 0 else 0)
+        logger.info(f"total_len: {total_len}, num_part: {num_part}")
         
         audio_seg = []
+        
         for part in range(num_part):
             start = part * chunk_size
             end = min((part + 1) * chunk_size, total_len)
-            actual_len = end - start
-            pad_len = chunk_size - actual_len
+            actual_len = end - start  # ← save actual length, don't overwrite
+            pad_len = chunk_size - actual_len  # ← length to pad
             
-            x_tst_part   = x_tst[:, start:end]
-            tone_part     = tones[:, start:end]
-            lang_ids_part = lang_ids[:, start:end]
-            bert_part     = bert[:, :, start:end]
-            ja_bert_part  = ja_bert[:, :, start:end]
+            x_tst_part    = x_tst[:, start:end]
+            tone_part      = tones[:, start:end]
+            lang_ids_part  = lang_ids[:, start:end]
+            bert_part      = bert[:, :, start:end]
+            ja_bert_part   = ja_bert[:, :, start:end]
             
+            # Use actual_len for judgment, pad with pad_len
             if pad_len > 0:
-                x_tst_part   = np.pad(x_tst_part,   ((0,0),(0,pad_len)))
-                tone_part     = np.pad(tone_part,     ((0,0),(0,pad_len)))
-                lang_ids_part = np.pad(lang_ids_part, ((0,0),(0,pad_len)))
-                bert_part     = np.pad(bert_part,     ((0,0),(0,0),(0,pad_len)))
-                ja_bert_part  = np.pad(ja_bert_part,  ((0,0),(0,0),(0,pad_len)))
+                x_tst_part   = np.pad(x_tst_part,   ((0, 0), (0, pad_len)),      constant_values=0)
+                tone_part     = np.pad(tone_part,     ((0, 0), (0, pad_len)),      constant_values=0)
+                lang_ids_part = np.pad(lang_ids_part, ((0, 0), (0, pad_len)),      constant_values=0)
+                bert_part     = np.pad(bert_part,     ((0, 0), (0, 0), (0, pad_len)), constant_values=0)
+                ja_bert_part  = np.pad(ja_bert_part,  ((0, 0), (0, 0), (0, pad_len)), constant_values=0)
             
+            # x_tst_lengths pass actual length (model uses mask internally), shape fixed to chunk_size
             x_tst_lengths_part = np.array([actual_len], dtype=np.int32)
             
-            input_spec = {
-                self.input_names[0]: x_tst_part,
-                self.input_names[1]: x_tst_lengths_part,
-                self.input_names[2]: speaker_id,
-                self.input_names[3]: tone_part,
-                self.input_names[4]: lang_ids_part,
-                self.input_names[5]: bert_part,
-                self.input_names[6]: ja_bert_part,
-                self.input_names[7]: np.array([sdp_ratio], dtype=np.float32),
-                self.input_names[8]: np.array([noise_scale_w], dtype=np.float32),
-                self.input_names[9]: np.array([speed], dtype=np.float32),
-            }
+            logger.info(f"part {part}: start={start}, end={end}, actual_len={actual_len}, pad_len={pad_len}")
+            logger.info(f"  x_tst_part shape: {x_tst_part.shape}")
+            logger.info(f"  tone_part shape: {tone_part.shape}")
             
-            output = self.session.run(self.output_names, input_spec)[0]
-            audio_full = np.squeeze(output, axis=0)
-            audio_full = self._trim_trailing_silence(audio_full)
+            # Map inputs by name, compatible with 9 inputs (QNN) and 10 inputs (local ONNX)
+            input_spec = {}
+            named_inputs = {
+                "x_tst": x_tst_part,
+                "x_tst_lengths": x_tst_lengths_part,
+                "speakers": speaker_id,
+                "tones": tone_part,
+                "lang_ids": lang_ids_part,
+                "bert": bert_part,
+                "ja_bert": ja_bert_part,
+                "sdp_ratio": np_sdp_ratio,
+                "noise_scale": np_noise_scale,
+                "noise_scale_w": np_noise_scale_w,
+                "speed": np_speed,
+            }
+            for k, v in named_inputs.items():
+                if k in self.input_names:
+                    input_spec[k] = v
+            
+            output_spec = self.session.run(self.output_names, input_spec)
+            
+            # Diagnostics: QNN raw output statistics
+            audio_out = output_spec[0]
+            logger.info(f"part {part}: raw_output shape={audio_out.shape}, "
+                        f"min={audio_out.min():.6f}, max={audio_out.max():.6f}, "
+                        f"nonzero={np.count_nonzero(audio_out)}")
+            
+            # If there is a y_lengths output, use it for precise trimming (most reliable)
+            if len(output_spec) > 1:
+                y_len = int(output_spec[1][0])  # mel frames
+                valid_samples = y_len * self.hop_size
+                audio_full = np.squeeze(audio_out, axis=0)[:valid_samples]
+                logger.info(f"part {part}: y_lengths={y_len}, valid_samples={valid_samples}, "
+                            f"trimmed_len={len(audio_full)}")
+            else:
+                # Compatibility with old models: use silence detection to trim
+                audio_full = np.squeeze(audio_out, axis=0)
+                audio_full = self._trim_trailing_silence(audio_full)
+                logger.info(f"part {part}: full_audio_len={audio_out.shape[-1]}, "
+                            f"trimmed_len={audio_full.shape[0]}")
+            
             audio_seg.append(audio_full)
         
-        return np.concatenate(audio_seg, axis=0), self.sample_rate
-    
-    def generate_audio(self, text, language="ZH_MIX_EN", sdp_ratio=0.2,
-                       noise_scale=0.667, noise_scale_w=0.8, speed=1.0):
+        combined_audio = np.concatenate(audio_seg, axis=0)
+        return combined_audio, self.sample_rate
+        
+    def generate_audio(self,
+                       text:str,
+                       language:str="ZH_MIX_EN",
+                       sdp_ratio:float=0.2,
+                       noise_scale:float=0.667,
+                       noise_scale_w:float=0.8,
+                       speed:float=1.0) -> Tuple[np.ndarray, int]:
+        """_summary_
+
+        Args:
+            text (str): User input text
+            language (str, optional): Language of the text. Defaults to "ZH_MIX_EN".
+            sdp_ratio (float, optional): Ratio of SDP. Defaults to 0.2.
+            noise_scale (float, optional): Scale of noise. Defaults to 0.667.
+            noise_scale_w (float, optional): Weight of noise scale. Defaults to 0.8.
+            speed (float, optional): Speed of the audio. Defaults to 1.0.
+
+        Returns:
+            Tuple[np.ndarray, int]: Audio data and sample rate
+        """
+        if language.lower() == "zh_mix_en" or language.lower() == "zh":
+            language = "ZH_MIX_EN"
+        elif language.lower() == "en":
+            language = "EN"
+        else:
+            raise ValueError(f"language {language} not supported")
+        
         x_tst, x_tst_lengths, speaker_id, tones, lang_ids, bert, ja_bert = self.__preprocess(text, language)
+        
+        np_sdp_ratio = np.array([sdp_ratio], dtype=self.float_dtype)
+        np_noise_scale = np.array([noise_scale], dtype=self.float_dtype)
+        np_noise_scale_w = np.array([noise_scale_w], dtype=self.float_dtype)
+        np_speed = np.array([speed], dtype=self.float_dtype)
         
         input_spec = {
             self.input_names[0]: x_tst,
@@ -600,60 +1039,82 @@ class MeloTTS:
             self.input_names[4]: lang_ids,
             self.input_names[5]: bert,
             self.input_names[6]: ja_bert,
-            self.input_names[7]: np.array([sdp_ratio], dtype=np.float32),
-            self.input_names[8]: np.array([noise_scale], dtype=np.float32),
-            self.input_names[9]: np.array([noise_scale_w], dtype=np.float32),
-            self.input_names[10]: np.array([speed], dtype=np.float32),
+            self.input_names[7]: np_sdp_ratio,
+            self.input_names[8]: np_noise_scale,
+            self.input_names[9]: np_noise_scale_w,
+            self.input_names[10]: np_speed,
         }
+
+        output_spec = self.session.run(self.output_names, input_spec)[0]
         
-        output = self.session.run(self.output_names, input_spec)[0]
-        return np.squeeze(output, axis=0), self.sample_rate
+        audio_data = np.squeeze(output_spec, axis=0)
+        
+        return audio_data, self.sample_rate
+
+default_model_path = "./models/MeloTTS-ZH-MIXED-EN-ONNX/"
+default_output_path = "./"
+default_test_txt = "We officially launch a large language model aimed at tackling complex systems engineering and long-cycle intelligent agent tasks. Scaling up remains one of the most important ways to enhance the efficiency of artificial general intelligence. I also support numbers like 123."
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run MeloTTS ONNX Inference")
-    parser.add_argument("-m", "--model_path", default="./models/MeloTTS-ZH-MIXED-EN-ONNX/")
-    parser.add_argument("-o", "--output_path", default="./")
-    parser.add_argument("-d", "--device", default="cpu")
-    parser.add_argument("-i", "--is_dynamic", action="store_true")
-    parser.add_argument("-t", "--text", default="我们正式推出大语言模型。")
-    parser.add_argument("-l", "--language", default="ZH_MIX_EN")
-    parser.add_argument("-sdp", "--sdp_ratio", type=float, default=0.2)
-    parser.add_argument("-ns", "--noise_scale", type=float, default=0.667)
-    parser.add_argument("-nsw", "--noise_scale_w", type=float, default=0.8)
-    parser.add_argument("-s", "--speed", type=float, default=1.0)
+    msg_info = "Run MeloTTS ONNX Inference. Both Support Dynamic and Static Model."
+    
+    usg_info = """
+    Dynamic Model:
+        python run_onnx.py -m ./models/melotts_onnx/ -o ./ -d qnn -i -t "你好，我是中英混合模型。Hello I am a mixed language model.我支持数字123" -l ZH_MIX_EN -sdp 0.2 -ns 0.667 -nsw 0.8 -s 1.0
+    
+    Static Model:
+        python run_onnx.py -m ./models/melotts_onnx/ -o ./ -s -i -t "你好，我是中英混合模型。Hello I am a mixed language model.我支持数字123" -l ZH_MIX_EN -sdp 0.2 -nsw 0.8 -s 1.0
+    """
+    parser = argparse.ArgumentParser(description=msg_info, usage=usg_info)
+    parser.add_argument("-m", "--model_path", type=str, default=default_model_path, help="Path to the ONNX model")
+    parser.add_argument("-o", "--output_path", type=str, default=default_output_path, help="Path to save the output audio")
+    parser.add_argument("-d", "--device", type=str, default="qnn", help="Device to run the model on")
+    parser.add_argument("-i", "--is_dynamic", action="store_true", help="Whether to use dynamic model")
+    parser.add_argument("-t", "--text", type=str, default=default_test_txt, help="User input text")
+    parser.add_argument("-l", "--language", type=str, default="ZH_MIX_EN", help="Language of the text")
+    parser.add_argument("-sdp", "--sdp_ratio", type=float, default=0.2, help="Ratio of SDP")
+    parser.add_argument("-ns", "--noise_scale", type=float, default=0.667, help="Scale of noise")
+    parser.add_argument("-nsw", "--noise_scale_w", type=float, default=0.8, help="Weight of noise scale")
+    parser.add_argument("-s", "--speed", type=float, default=1.0, help="Speed of the audio")
+    
     args = parser.parse_args()
     
-    provider_options = None
     if args.device == "qnn":
-        provider_options = [{
-            'backend_path': f'{os.environ["QNN_SDK_ROOT"]}/lib/aarch64-oe-linux-gcc11.2/libQnnHtp.so',
-        }]
+        provider_options = [
+            {
+                'backend_path':f'{os.environ["QNN_SDK_ROOT"]}/lib/aarch64-oe-linux-gcc11.2/libQnnHtp.so',
+                # 'htp_performance_mode': 'burst'
+            }
+        ]
+    else:
+        provider_options = None
     
-    melo_tts = MeloTTS(args.model_path, args.device, provider_options, args.is_dynamic)
+    melo_tts = MeloTTS(model_root=args.model_path, 
+                       device=args.device, 
+                       provider_options=provider_options, 
+                       is_dynamic=args.is_dynamic)
     
     if args.is_dynamic:
-        audio, sr = melo_tts.generate_audio(args.text, args.language,
-                                            args.sdp_ratio, args.noise_scale,
-                                            args.noise_scale_w, args.speed)
+        audio, sr = melo_tts.generate_audio(
+            text=args.text,
+            language=args.language,
+            sdp_ratio=args.sdp_ratio,
+            noise_scale=args.noise_scale,
+            noise_scale_w=args.noise_scale_w,
+            speed=args.speed,
+        )
     else:
-        audio, sr = melo_tts.generate_audio_chunked(args.text, args.language,
-                                                    args.sdp_ratio, args.noise_scale_w,
-                                                    args.speed, chunk_size=512)
+        audio, sr = melo_tts.generate_audio_chunked(
+            text=args.text,
+            language=args.language,
+            sdp_ratio=args.sdp_ratio,
+            noise_scale_w=args.noise_scale_w,
+            speed=args.speed,
+            chunk_size=512 # same as the model input sequence length
+        )
     
-    save_path = os.path.join(args.output_path, "dynamic_output.wav" if args.is_dynamic else "static_output.wav")
+    audio_save_path = os.path.join(args.output_path, "dynamic_output.wav" if args.is_dynamic else "static_output.wav")
     os.makedirs(args.output_path, exist_ok=True)
-    sf.write(save_path, audio, sr)
+    sf.write(audio_save_path, audio, sr)
 ```
-
----
-
-#### Acknowledgements
-
-- This project is based on the [MeloTTS](https://github.com/myshell-ai/MeloTTS) project.
-- Model conversion uses the [ONNX](https://onnx.ai/) framework.
-- Inference uses the [ONNX Runtime](https://onnxruntime.ai/) framework.
-
-#### Contact
-
-- WeChat Official Account: "CrazyNET"

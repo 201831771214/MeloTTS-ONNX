@@ -53,17 +53,15 @@ def build_melo_dummy_input(
     noise_scale=0.667, 
     noise_scale_w=0.8, 
     speed=1.0,
-    target_seq_len=None):
+    target_seq_len=None,
+    float_dtype=torch.float32):
     """Build dummy input for MeloTTS.
 
     Args:
-        batch_size (int, optional): batch size. Defaults to 1.
         target_seq_len (int, optional): target text sequence length. If set, 
             pad/truncate all text-related inputs to this length.
-        sdp_ratio (float, optional): sdp ratio. Defaults to 0.2.
-        noise_scale (float, optional): noise scale. Defaults to 0.667.
-        noise_scale_w (float, optional): noise scale w. Defaults to 0.8.
-        speed (float, optional): speed. Defaults to 1.0.
+        float_dtype: torch dtype for float tensors (torch.float32 or torch.float16).
+        sdp_ratio, noise_scale, noise_scale_w, speed: as before.
 
     Returns:
         dict: dummy input for MeloTTS.
@@ -103,14 +101,14 @@ def build_melo_dummy_input(
     tones = tones.to(torch.int32).unsqueeze(0)
     lang_ids = lang_ids.to(torch.int32).unsqueeze(0)
     
-    bert = bert.to(torch.float32).unsqueeze(0)
-    ja_bert = ja_bert.to(torch.float32).unsqueeze(0)
+    bert = bert.to(float_dtype).unsqueeze(0)
+    ja_bert = ja_bert.to(float_dtype).unsqueeze(0)
     
-    ratio = torch.Tensor([sdp_ratio]).to(torch.float32)
-    scale = torch.Tensor([noise_scale]).to(torch.float32)
-    a_speed = torch.Tensor([speed]).to(torch.float32)
+    ratio = torch.Tensor([sdp_ratio]).to(float_dtype)
+    scale = torch.Tensor([noise_scale]).to(float_dtype)
+    a_speed = torch.Tensor([speed]).to(float_dtype)
     
-    print(f"Input shapes: x_tst={x_tst.shape}, bert={bert.shape}, ja_bert={ja_bert.shape}")
+    print(f"Input shapes: x_tst={x_tst.shape}, bert={bert.shape}, ja_bert={ja_bert.shape}, float_dtype={float_dtype}")
     
     return (x_tst, x_tst_lengths, speakers, tones, lang_ids, bert, ja_bert, ratio, scale, a_speed)
 
@@ -121,13 +119,20 @@ def export_melotts(
     opset_version:int=14,
     is_dynamic:bool=True,
     max_mel_frames:int=1024,
+    float_dtype=torch.float32,
+    qnn_mode:bool=False,
 ):
-    melotts_wrapper = MeloTTSWrapper(melo_tts, is_dynamic, max_mel_frames=max_mel_frames).eval()
+    melotts_wrapper = MeloTTSWrapper(melo_tts, is_dynamic, max_mel_frames=max_mel_frames, qnn_mode=qnn_mode).eval()
     
     
     # input_names = ["x_tst", "x_tst_lengths", "speakers", "tones", "lang_ids", "bert", "ja_bert", "sdp_ratio", "noise_scale", "noise_scale_w", "speed"]
     input_names = ["x_tst", "x_tst_lengths", "speakers", "tones", "lang_ids", "bert", "ja_bert", "sdp_ratio", "noise_scale", "speed"]
-    output_names = ["audio_data"]
+    
+    if is_dynamic:
+        output_names = ["audio_data"]
+    else:
+        # 静态模型额外输出 y_lengths（有效 mel 帧数），推理端精确截断
+        output_names = ["audio_data", "y_lengths"]
     
     if is_dynamic:
         dynamic_axes = {
@@ -146,7 +151,8 @@ def export_melotts(
         saved_name = f"melotts_{opset_version}_dynamic.onnx"
     else:
         dynamic_axes = {}
-        saved_name = f"melotts_{opset_version}_static.onnx"
+        suffix = f"fp16" if float_dtype == torch.float16 else f"fp32"
+        saved_name = f"melotts_{opset_version}_static_{suffix}.onnx"
         
     try:
         os.makedirs(os.path.join(output_path, "melotts_onnx"), exist_ok=True)
@@ -241,7 +247,12 @@ if __name__ == "__main__":
     parser.add_argument("-sp", "--speed", type=float, default=1.0, help="Speed for dummy input.")
     parser.add_argument("-sl", "--seq_len", type=int, default=None, help="Target text sequence length. Pad/truncate inputs to this length for static export.")
     parser.add_argument("-mmf", "--max_mel_frames", type=int, default=1024, help="Max mel-spectrogram frames in static export (default: 1024, lower = less DSP memory).")
+    parser.add_argument("-p", "--precision", type=str, default="fp32", choices=["fp32", "fp16"], help="Floating-point precision for IO (fp32 or fp16). fp16 reduces precision loss on QNN HTP.")
+    parser.add_argument("--qnn", action="store_true", help="QNN HTP export mode: bypass fp16-unstable SDP Flow, use DP-only with clamp.")
     args = parser.parse_args()
+    
+    float_dtype = torch.float16 if args.precision == "fp16" else torch.float32
+    print(f"Using float dtype: {float_dtype}")
     
     os.makedirs(args.output_path, exist_ok=True)
     
@@ -264,7 +275,11 @@ if __name__ == "__main__":
         noise_scale_w=args.noise_scale_w,
         speed=args.speed,
         target_seq_len=args.seq_len,
+        float_dtype=float_dtype,
     )
+
+    # QNN 模式：直接在 model 上设标记，trace 前生效
+    melo_tts.model._qnn_mode = args.qnn
 
     export_melotts(
         melo_tts=melo_tts,
@@ -273,5 +288,7 @@ if __name__ == "__main__":
         dummy_input=dummy_input,
         is_dynamic=args.is_dynamic,
         max_mel_frames=args.max_mel_frames,
+        float_dtype=float_dtype,
+        qnn_mode=args.qnn,
     )
     logger.info(f"Export Melo TTS model done in {time.perf_counter() - start_time:.2f} seconds.")

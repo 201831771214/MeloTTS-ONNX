@@ -8,12 +8,13 @@ import os
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 class MeloTTSWrapper(nn.Module):
-    def __init__(self, melo_tts:TTS, is_dynamic:bool=False, max_mel_frames:int=1024):
+    def __init__(self, melo_tts:TTS, is_dynamic:bool=False, max_mel_frames:int=1024, qnn_mode:bool=False):
         super().__init__()
         self.melo_tts = melo_tts
         self.is_dynamic = is_dynamic
         self.hop_size = 512
         self.max_mel_frames = max_mel_frames
+        self.qnn_mode = qnn_mode
     
     @torch.no_grad()
     def forward(self,
@@ -70,6 +71,8 @@ class MeloTTSWrapper(nn.Module):
             audio_tensor = audio_tensor.squeeze(0) # remove channel dim
             return audio_tensor
         else:
+            # fp16→fp32 转换：模型权重是 fp32，输入为 fp16 时必须先 cast
+            _cast = lambda t: t.to(torch.float32) if t.dtype == torch.float16 else t
             noise_scale_w = torch.Tensor([0.8]).to(torch.float32)
             
             result = self.melo_tts.model.forward_for_export_static(
@@ -78,12 +81,12 @@ class MeloTTSWrapper(nn.Module):
                 sid=speakers,
                 tone=tones,
                 language=lang_ids,
-                bert=bert,
-                ja_bert=ja_bert,
-                noise_scale=noise_scale,
-                speed=speed,
+                bert=_cast(bert),
+                ja_bert=_cast(ja_bert),
+                noise_scale=_cast(noise_scale),
+                speed=_cast(speed),
                 noise_scale_w=noise_scale_w,
-                sdp_ratio=sdp_ratio,
+                sdp_ratio=_cast(sdp_ratio),
                 max_mel_frames=self.max_mel_frames,
             )
 
@@ -111,4 +114,5 @@ class MeloTTSWrapper(nn.Module):
             )
 
             audio_valid = audio_valid.squeeze(0)  # [1, valid_audio_len]
-            return audio_valid
+            # 返回 (audio, y_lengths)，y_lengths 用于推理端精确截断
+            return audio_valid, y_lengths.to(torch.int32)

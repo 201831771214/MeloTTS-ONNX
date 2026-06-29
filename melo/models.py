@@ -1057,13 +1057,21 @@ class SynthesizerTrn(nn.Module):
         )
 
         # ---------- Duration predictor ----------
-        logw = (
-            self.sdp(x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w[0])
-            * sdp_ratio[0]
-            + self.dp(x, x_mask, g=g) * (1 - sdp_ratio[0])
-        )
-        w = torch.exp(logw) * x_mask * (1.0 / speed[0])
-        w_ceil = torch.ceil(w)  # [b, 1, t_text]
+        if getattr(self, '_qnn_mode', False):
+            # QNN HTP fp16: SDP/DP 全崩，固定每 token 4 帧
+            w_ceil = torch.ones_like(x_mask.squeeze(1)) * 4  # [b, t_text]
+            w_ceil = w_ceil.unsqueeze(1) * x_mask           # [b, 1, t_text]
+            print(f"Use 4 frames per token")
+        else:
+            # fp32 / CPU: 原始 SDP+DP，正常质量
+            logw = (
+                self.sdp(x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w[0])
+                * sdp_ratio[0]
+                + self.dp(x, x_mask, g=g) * (1 - sdp_ratio[0])
+            )
+            w = torch.exp(logw) * x_mask * (1.0 / speed[0])
+            w_ceil = torch.ceil(w)
+            print(f"Use SDP + DP for custom onnx")
 
         # ---------- y_lengths ----------
         y_lengths = torch.clamp_min(torch.sum(w_ceil, [1, 2]), 1).long()  # [b]

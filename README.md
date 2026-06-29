@@ -385,9 +385,30 @@ EPContext       | 1
 
 #### Precompiled QNN ONNX Profile Info
 
-![info0](./rep_sources/info0.png)
-![info1](./rep_sources/info1.png)
-![info1](./rep_sources/info2.png)
+![info0](./rep_sources/0.png)
+![info1](./rep_sources/1.png)
+
+#### 各位小伙伴在运行MeloTTS QNN ONNX EP的时候关闭如下输入即可：
+
+```python
+# generate_audio_chunked 或者 generate_audio中
+
+named_inputs = {
+    "x_tst": x_tst_part,
+    "x_tst_lengths": x_tst_lengths_part,
+    "speakers": speaker_id,
+    "tones": tone_part,
+    "lang_ids": lang_ids_part,
+    "bert": bert_part,
+    "ja_bert": ja_bert_part,
+    "sdp_ratio": np_sdp_ratio,
+    # "noise_scale": np_noise_scale,
+    # "noise_scale_w": np_noise_scale_w,
+    # "speed": np_speed,
+}
+```
+
+- 因为原声MeloTTS源码中采用DP + SDP的方案保证音频质量，动态计算frames，但是FP16在QNN EP中会自动崩掉，在这里小编也不知道原因，所以咋们就直接采用固定frames的方案来直接规避掉FP16精度计算崩掉的问题，而且模型计算单元也从复杂的2372减小到了1760, 在计算精度上也基本没有什么损失，而且还加速了运算速度，简直是一石二鸟的买卖。
 
 ---
 
@@ -688,6 +709,7 @@ logger.setLevel(logging.INFO)
 
 class MeloTTS:
     def __init__(self, model_root:str, device:str="cpu", provider_options:list[dict]=None, is_dynamic:bool=True) -> None:
+        self.hop_size = 512  # Generator 上采样倍率
         self.model_list = {}
         
         for f in os.listdir(model_root):
@@ -705,13 +727,16 @@ class MeloTTS:
                     self.model_name = None
                     continue
         else:
-            for m_k, m_v in self.model_list.items():
-                if "static" in m_k.lower():
-                    self.model_name = m_v
-                    break
-                else:
-                    self.model_name = None
-                    continue
+            if device == "qnn":
+                self.model_name = os.path.join(model_root, "precompiled_qnn_onnx", "model.onnx")
+            else:
+                for m_k, m_v in self.model_list.items():
+                    if "static" in m_k.lower():
+                        self.model_name = m_v
+                        break
+                    else:
+                        self.model_name = None
+                        continue
         
         if self.model_name == None:
             logger.error(f"model name not found, please check model root: {model_root}")
@@ -738,12 +763,67 @@ class MeloTTS:
         self.provider_options = provider_options if self.providers == ["QNNExecutionProvider"] else None
         
         self.session = ort.InferenceSession(self.model_path, providers=self.providers, provider_options=provider_options)
+        logger.info(f"Using EP: {self.session.get_providers()}, model inputs: {len(self.session.get_inputs())}")
         
         self.input_names = [input.name for input in self.session.get_inputs()]
         self.output_names = [output.name for output in self.session.get_outputs()]
+        
+        # 自动检测浮点 dtype：匹配模型期望精度（fp32 或 fp16）
+        onnx_dtype_to_np = {1: np.float32, 10: np.float16}  # TensorProto.FLOAT=1, FLOAT16=10
+        self.float_dtype = np.float32  # 默认
+        for inp in self.session.get_inputs():
+            if inp.name == "bert":  # bert 特征一定是浮点输入
+                self.float_dtype = onnx_dtype_to_np.get(inp.type, np.float32)
+                break
+        
         logger.info(f"model input names: {self.input_names}")
         logger.info(f"model output names: {self.output_names}")
+        logger.info(f"auto-detected float dtype: {self.float_dtype}")
     
+    @staticmethod
+    def _trim_trailing_silence(audio: np.ndarray) -> np.ndarray:
+        """裁剪尾部空闲段。
+
+        用 RMS 能量而非峰值——空闲噪音可能有单点尖峰（~0.06），但 RMS
+        能量远低于真实语音，区分度比峰值大得多。
+        """
+        if len(audio) < 2048:
+            return audio
+
+        # 诊断：输出整体统计
+        logger.info(f"_trim: audio_len={len(audio)}, min={audio.min():.6f}, "
+                    f"max={audio.max():.6f}, mean={np.abs(audio).mean():.6f}, "
+                    f"nonzero_ratio={np.count_nonzero(audio)/len(audio):.4f}")
+
+        win = 512
+        # RMS 能量 per frame（比峰值更有区分度）
+        frame_rms = np.array([
+            np.sqrt(np.mean(audio[i:i+win].astype(np.float64) ** 2))
+            for i in range(0, len(audio) - win, win)
+        ])
+
+        # 尾部 10% 帧 = idle 噪音 RMS
+        tail_n = max(1, len(frame_rms) // 10)
+        idle_rms = np.max(frame_rms[-tail_n:])
+
+        # 门限 = max(idle × 3, 绝对下界 5e-4)
+        threshold = max(idle_rms * 3, 5e-4)
+
+        logger.info(f"_trim: total_frames={len(frame_rms)}, tail={tail_n}, "
+                    f"idle_rms={idle_rms:.6f}, threshold={threshold:.6f}, "
+                    f"max_rms={frame_rms.max():.6f}")
+
+        above = np.where(frame_rms > threshold)[0]
+        if len(above) == 0:
+            logger.warning("_trim: no frame above threshold, returning empty")
+            return audio[:0]
+
+        cut_frame = above[-1] + 1
+        cut_sample = min(cut_frame * win, len(audio))
+        logger.info(f"_trim: cut at frame {above[-1]}/{len(frame_rms)}, "
+                    f"sample {cut_sample}/{len(audio)}")
+        return audio[:cut_sample]
+
     def __preprocess(self, text:str, language:str):
         """Preprocess text input
         Args:
@@ -766,19 +846,19 @@ class MeloTTS:
             word2ph[0] += 1
         
         if getattr(self.cfg.data, "disable_bert", True):
-            bert = np.zeros((1024, len(phone)), dtype=np.float32)
-            ja_bert = np.zeros((768, len(phone)), dtype=np.float32)
+            bert = np.zeros((1024, len(phone)), dtype=self.float_dtype)
+            ja_bert = np.zeros((768, len(phone)), dtype=self.float_dtype)
         else:
             bert = get_zh_mix_en_bert(self.bert_model_path, text, word2ph, "cpu")
             del word2ph
             assert bert.shape[-1] == len(phone), phone
 
             if language == "ZH":
-                bert = bert
-                ja_bert = np.zeros(768, len(phone))
+                bert = bert.astype(self.float_dtype)
+                ja_bert = np.zeros((768, len(phone)), dtype=self.float_dtype)
             elif language in ["JP", "EN", "ZH_MIX_EN", 'KR', 'SP', 'ES', 'FR', 'DE', 'RU']:
-                ja_bert = bert
-                bert = np.zeros(1024, len(phone))
+                ja_bert = bert.astype(self.float_dtype)
+                bert = np.zeros((1024, len(phone)), dtype=self.float_dtype)
             else:
                 raise NotImplementedError()
         
@@ -832,9 +912,10 @@ class MeloTTS:
         
         x_tst, x_tst_lengths, speaker_id, tones, lang_ids, bert, ja_bert = self.__preprocess(text, language)
         
-        np_sdp_ratio = np.array([sdp_ratio], dtype=np.float32)
-        np_noise_scale_w = np.array([noise_scale_w], dtype=np.float32)
-        np_speed = np.array([speed], dtype=np.float32)
+        np_sdp_ratio = np.array([sdp_ratio], dtype=self.float_dtype)
+        np_noise_scale = np.array([0.667], dtype=self.float_dtype)
+        np_noise_scale_w = np.array([noise_scale_w], dtype=self.float_dtype)
+        np_speed = np.array([speed], dtype=self.float_dtype)
         
         total_len = x_tst_lengths[0]
         num_part = total_len // chunk_size + (1 if total_len % chunk_size != 0 else 0)
@@ -869,28 +950,46 @@ class MeloTTS:
             logger.info(f"  x_tst_part shape: {x_tst_part.shape}")
             logger.info(f"  tone_part shape: {tone_part.shape}")
             
-            input_spec = {
-                self.input_names[0]: x_tst_part,
-                self.input_names[1]: x_tst_lengths_part,
-                self.input_names[2]: speaker_id,
-                self.input_names[3]: tone_part,
-                self.input_names[4]: lang_ids_part,
-                self.input_names[5]: bert_part,
-                self.input_names[6]: ja_bert_part,
-                self.input_names[7]: np_sdp_ratio,
-                self.input_names[8]: np_noise_scale_w,
-                self.input_names[9]: np_speed,
+            # 按名字映射输入，兼容 9 输入（QNN）和 10 输入（本地 ONNX）
+            input_spec = {}
+            named_inputs = {
+                "x_tst": x_tst_part,
+                "x_tst_lengths": x_tst_lengths_part,
+                "speakers": speaker_id,
+                "tones": tone_part,
+                "lang_ids": lang_ids_part,
+                "bert": bert_part,
+                "ja_bert": ja_bert_part,
+                "sdp_ratio": np_sdp_ratio,
+                "noise_scale": np_noise_scale,
+                "noise_scale_w": np_noise_scale_w,
+                "speed": np_speed,
             }
+            for k, v in named_inputs.items():
+                if k in self.input_names:
+                    input_spec[k] = v
             
-            output_spec = self.session.run(self.output_names, input_spec)[0]
+            output_spec = self.session.run(self.output_names, input_spec)
             
-            # 静态模型输出固定长度，只取有效部分
-            # 按比例估算有效音频长度（actual_len / chunk_size）
-            audio_full = np.squeeze(output_spec, axis=0)  # [audio_len]
-            if pad_len > 0:
-                valid_audio_len = int(audio_full.shape[0] * actual_len / chunk_size)
-                logger.info(f"audio_full: {audio_full} ---- valid_audio_len: {valid_audio_len}")
-                audio_full = audio_full[:valid_audio_len]
+            # 诊断：QNN 原始输出统计
+            audio_out = output_spec[0]
+            logger.info(f"part {part}: raw_output shape={audio_out.shape}, "
+                        f"min={audio_out.min():.6f}, max={audio_out.max():.6f}, "
+                        f"nonzero={np.count_nonzero(audio_out)}")
+            
+            # 如果有 y_lengths 输出，用它精确截断（最可靠）
+            if len(output_spec) > 1:
+                y_len = int(output_spec[1][0])  # mel 帧数
+                valid_samples = y_len * self.hop_size
+                audio_full = np.squeeze(audio_out, axis=0)[:valid_samples]
+                logger.info(f"part {part}: y_lengths={y_len}, valid_samples={valid_samples}, "
+                            f"trimmed_len={len(audio_full)}")
+            else:
+                # 兼容旧模型：用静音检测截断
+                audio_full = np.squeeze(audio_out, axis=0)
+                audio_full = self._trim_trailing_silence(audio_full)
+                logger.info(f"part {part}: full_audio_len={audio_out.shape[-1]}, "
+                            f"trimmed_len={audio_full.shape[0]}")
             
             audio_seg.append(audio_full)
         
@@ -926,10 +1025,10 @@ class MeloTTS:
         
         x_tst, x_tst_lengths, speaker_id, tones, lang_ids, bert, ja_bert = self.__preprocess(text, language)
         
-        np_sdp_ratio = np.array([sdp_ratio], dtype=np.float32)
-        np_noise_scale = np.array([noise_scale], dtype=np.float32)
-        np_noise_scale_w = np.array([noise_scale_w], dtype=np.float32)
-        np_speed = np.array([speed], dtype=np.float32)
+        np_sdp_ratio = np.array([sdp_ratio], dtype=self.float_dtype)
+        np_noise_scale = np.array([noise_scale], dtype=self.float_dtype)
+        np_noise_scale_w = np.array([noise_scale_w], dtype=self.float_dtype)
+        np_speed = np.array([speed], dtype=self.float_dtype)
         
         input_spec = {
             self.input_names[0]: x_tst,
@@ -951,7 +1050,7 @@ class MeloTTS:
         
         return audio_data, self.sample_rate
 
-default_model_path = "./models/melotts_onnx/"
+default_model_path = "./models/MeloTTS-ZH-MIXED-EN-ONNX/"
 default_output_path = "./"
 default_test_txt = "我们正式推出大语言模型，旨在应对复杂系统工程和长周期智能体任务。扩展规模仍然是提升通用人工智能智能效率的最重要方式之一。我还支持数字123."
 
@@ -980,12 +1079,15 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    provider_options = [
-        {
-            'backend_path':f'{os.environ["QNN_SDK_ROOT"]}/lib/aarch64-oe-linux-gcc11.2/libQnnHtp.so',
-            # 'htp_performance_mode': 'burst'
-        }
-    ]
+    if args.device == "qnn":
+        provider_options = [
+            {
+                'backend_path':f'{os.environ["QNN_SDK_ROOT"]}/lib/aarch64-oe-linux-gcc11.2/libQnnHtp.so',
+                # 'htp_performance_mode': 'burst'
+            }
+        ]
+    else:
+        provider_options = None
     
     melo_tts = MeloTTS(model_root=args.model_path, 
                        device=args.device, 
@@ -1008,7 +1110,7 @@ if __name__ == "__main__":
             sdp_ratio=args.sdp_ratio,
             noise_scale_w=args.noise_scale_w,
             speed=args.speed,
-            chunk_size=239 # same as the model input sequence length
+            chunk_size=512 # same as the model input sequence length
         )
     
     audio_save_path = os.path.join(args.output_path, "dynamic_output.wav" if args.is_dynamic else "static_output.wav")
